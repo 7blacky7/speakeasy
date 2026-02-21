@@ -1,0 +1,15 @@
+# Prometheus Konfiguration für Speakeasy Multi-Instance
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'speakeasy-1'
+    static_configs:
+      - targets: ['speakeasy-1:9300']
+    metrics_path: '/metrics'
+
+  - job_name: 'speakeasy-2'
+    static_configs:
+      - targets: ['speakeasy-2:9300']
+    metrics_path: '/metrics'

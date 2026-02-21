@@ -1,0 +1,39 @@
+# Speakeasy Server – Single-Instance Deployment (SQLite)
+#
+# Verwendung:
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+
+services:
+  speakeasy:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: speakeasy
+    image: speakeasy/server:latest
+    ports:
+      - "9987:9987/udp"    # Voice-Daten (UDP)
+      - "30033:30033/tcp"  # File Transfer
+      - "10011:10011/tcp"  # ServerQuery TLS
+      - "8080:8080/tcp"    # REST/gRPC API
+      - "9300:9300/tcp"    # Prometheus Metriken
+      - "9301:9301/tcp"    # Health-Check
+    volumes:
+      - speakeasy-data:/data
+    environment:
+      - SE_DB_TYPE=sqlite
+      - SE_MAX_CLIENTS=512
+      - SE_LOG_FORMAT=json
+      - SE_LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9301/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  speakeasy-data:
+    driver: local

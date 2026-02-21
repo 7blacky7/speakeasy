@@ -1,0 +1,163 @@
+# Speakeasy Server – Multi-Instance Deployment (PostgreSQL + NATS)
+#
+# Verwendung:
+#   docker compose -f docker-compose.multi.yml up -d
+#   docker compose -f docker-compose.multi.yml logs -f
+#   docker compose -f docker-compose.multi.yml down
+#
+# Voraussetzungen: PostgreSQL und NATS müssen gestartet sein (depends_on)
+
+services:
+  # ---------------------------------------------------------------------------
+  # Speakeasy Instanz 1
+  # ---------------------------------------------------------------------------
+  speakeasy-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: speakeasy-1
+    image: speakeasy/server:latest
+    ports:
+      - "9987:9987/udp"    # Voice-Daten
+      - "30033:30033/tcp"  # File Transfer
+      - "10011:10011/tcp"  # ServerQuery TLS
+      - "8080:8080/tcp"    # REST/gRPC API
+      - "9300:9300/tcp"    # Prometheus Metriken
+    volumes:
+      - speakeasy-data-1:/data
+    environment:
+      - SE_DB_TYPE=postgresql
+      - SE_DB_URL=postgres://speakeasy:secret@postgres:5432/speakeasy
+      - SE_NATS_URL=nats://nats:4222
+      - SE_MAX_CLIENTS=512
+      - SE_LOG_FORMAT=json
+      - SE_LOG_LEVEL=info
+      - SE_INSTANCE_ID=speakeasy-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9301/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - speakeasy-net
+
+  # ---------------------------------------------------------------------------
+  # Speakeasy Instanz 2
+  # ---------------------------------------------------------------------------
+  speakeasy-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: speakeasy-2
+    image: speakeasy/server:latest
+    ports:
+      - "9988:9987/udp"    # Voice-Daten (alternativer Port)
+      - "30034:30033/tcp"  # File Transfer (alternativer Port)
+      - "10012:10011/tcp"  # ServerQuery TLS (alternativer Port)
+      - "8081:8080/tcp"    # REST/gRPC API (alternativer Port)
+      - "9302:9300/tcp"    # Prometheus Metriken (alternativer Port)
+    volumes:
+      - speakeasy-data-2:/data
+    environment:
+      - SE_DB_TYPE=postgresql
+      - SE_DB_URL=postgres://speakeasy:secret@postgres:5432/speakeasy
+      - SE_NATS_URL=nats://nats:4222
+      - SE_MAX_CLIENTS=512
+      - SE_LOG_FORMAT=json
+      - SE_LOG_LEVEL=info
+      - SE_INSTANCE_ID=speakeasy-2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9301/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - speakeasy-net
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Datenbank
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-bookworm
+    container_name: speakeasy-postgres
+    environment:
+      POSTGRES_DB: speakeasy
+      POSTGRES_USER: speakeasy
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speakeasy -d speakeasy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - speakeasy-net
+
+  # ---------------------------------------------------------------------------
+  # NATS Message Broker (für Multi-Instance PubSub)
+  # ---------------------------------------------------------------------------
+  nats:
+    image: nats:2.10-alpine
+    container_name: speakeasy-nats
+    command: ["--jetstream", "--store_dir=/data"]
+    ports:
+      - "4222:4222"   # Client-Verbindungen
+      - "8222:8222"   # HTTP Monitoring
+    volumes:
+      - nats-data:/data
+    restart: unless-stopped
+    networks:
+      - speakeasy-net
+
+  # ---------------------------------------------------------------------------
+  # Prometheus (Metriken-Sammlung)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: speakeasy-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - speakeasy-net
+
+volumes:
+  speakeasy-data-1:
+    driver: local
+  speakeasy-data-2:
+    driver: local
+  pg-data:
+    driver: local
+  nats-data:
+    driver: local
+  prometheus-data:
+    driver: local
+
+networks:
+  speakeasy-net:
+    driver: bridge

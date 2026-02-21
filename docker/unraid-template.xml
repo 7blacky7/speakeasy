@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Speakeasy</Name>
+  <Repository>speakeasy/server:latest</Repository>
+  <Registry>https://hub.docker.com/r/speakeasy/server</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/7blacky7/speakeasy/issues</Support>
+  <Project>https://github.com/7blacky7/speakeasy</Project>
+  <Overview>Open-Source Voice Communication Platform – TeamSpeak-Alternative mit Rust-Backend, E2E-Verschlüsselung und modernem WebClient.</Overview>
+  <Category>Network:Voice</Category>
+  <Icon>https://raw.githubusercontent.com/7blacky7/speakeasy/main/docs/icon.png</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <Description>Speakeasy ist eine quelloffene Voice-Chat-Plattform als Alternative zu TeamSpeak. Features: HD-Voice (Opus), E2E-Verschlüsselung, REST/gRPC API, ServerQuery-Kompatibilität, Plugins via WASM.</Description>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+
+  <!-- Ports -->
+  <Config Name="Voice Port (UDP)" Target="9987" Default="9987" Mode="udp" Description="UDP Voice-Daten Port" Type="Port" Display="always" Required="true" Mask="false">9987</Config>
+  <Config Name="File Transfer (TCP)" Target="30033" Default="30033" Mode="tcp" Description="File Transfer Port" Type="Port" Display="always" Required="false" Mask="false">30033</Config>
+  <Config Name="ServerQuery TLS (TCP)" Target="10011" Default="10011" Mode="tcp" Description="ServerQuery TLS Port (kompatibel mit TS3-Tools)" Type="Port" Display="always" Required="false" Mask="false">10011</Config>
+  <Config Name="REST/gRPC API (TCP)" Target="8080" Default="8080" Mode="tcp" Description="REST und gRPC API Port" Type="Port" Display="always" Required="false" Mask="false">8080</Config>
+  <Config Name="Prometheus Metriken (TCP)" Target="9300" Default="9300" Mode="tcp" Description="Prometheus Metriken Endpoint" Type="Port" Display="advanced" Required="false" Mask="false">9300</Config>
+  <Config Name="Health-Check (TCP)" Target="9301" Default="9301" Mode="tcp" Description="Health-Check Endpoint" Type="Port" Display="advanced" Required="false" Mask="false">9301</Config>
+
+  <!-- Volumes -->
+  <Config Name="Daten-Verzeichnis" Target="/data" Default="/mnt/user/appdata/speakeasy/data" Mode="rw" Description="Persistente Daten (Datenbank, Uploads)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/speakeasy/data</Config>
+  <Config Name="Konfiguration" Target="/etc/speakeasy" Default="/mnt/user/appdata/speakeasy/config" Mode="ro" Description="Konfigurationsverzeichnis (config.toml)" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/speakeasy/config</Config>
+
+  <!-- Umgebungsvariablen -->
+  <Config Name="Datenbank-Typ" Target="SE_DB_TYPE" Default="sqlite" Description="Datenbank-Typ: sqlite oder postgresql" Type="Variable" Display="always" Required="false" Mask="false">sqlite</Config>
+  <Config Name="Max. Clients" Target="SE_MAX_CLIENTS" Default="512" Description="Maximale gleichzeitige Client-Verbindungen" Type="Variable" Display="always" Required="false" Mask="false">512</Config>
+  <Config Name="Log-Level" Target="SE_LOG_LEVEL" Default="info" Description="Log-Level: trace, debug, info, warn, error" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
+  <Config Name="Log-Format" Target="SE_LOG_FORMAT" Default="json" Description="Log-Format: text oder json" Type="Variable" Display="advanced" Required="false" Mask="false">json</Config>
+  <Config Name="PostgreSQL URL" Target="SE_DB_URL" Default="" Description="Nur bei SE_DB_TYPE=postgresql: postgres://user:pass@host:5432/db" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="NATS URL" Target="SE_NATS_URL" Default="" Description="Nur bei Multi-Instance: nats://host:4222" Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+</Container>

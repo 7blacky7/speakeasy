@@ -1,0 +1,7 @@
+target/
+client/node_modules/
+client/dist/
+.git/
+.synapse/
+*.md
+docs/
