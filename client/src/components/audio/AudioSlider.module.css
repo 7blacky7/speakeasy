@@ -1,0 +1,77 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  min-width: 50px;
+  text-align: right;
+}
+
+.numInput {
+  width: 64px;
+  padding: 2px 6px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  text-align: right;
+  outline: none;
+}
+
+.numInput:focus {
+  border-color: var(--color-accent);
+}
+
+.track {
+  position: relative;
+  height: 6px;
+  background-color: var(--color-bg-primary);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  transition: width 0.05s;
+}
+
+.slider {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  transform: translateY(-50%);
+  opacity: 0;
+  cursor: pointer;
+  height: 20px;
+  margin: 0;
+}
+
+.slider:focus-visible ~ .fill {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}

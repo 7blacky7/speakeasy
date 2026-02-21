@@ -1,0 +1,122 @@
+.monitor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.levels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.levelRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.levelLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  width: 64px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.levelTrack {
+  flex: 1;
+  height: 8px;
+  background-color: var(--color-bg-primary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.levelFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.05s linear;
+}
+
+.levelNormal {
+  background-color: var(--color-success);
+}
+
+.levelMid {
+  background-color: var(--color-warning);
+}
+
+.levelHigh {
+  background-color: var(--color-danger);
+}
+
+.levelClip {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 6px var(--color-danger);
+}
+
+.levelPct {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.indicators {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clipIndicator {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  letter-spacing: 0.05em;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.clipIndicator.clipping {
+  background-color: var(--color-danger);
+  color: #fff;
+  border-color: var(--color-danger);
+  animation: blink 0.3s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0.4; }
+}
+
+.noiseFloor {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.statBadge {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-primary);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}

@@ -1,0 +1,53 @@
+.display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.label {
+  color: var(--color-text-secondary);
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.good {
+  background-color: rgba(67, 181, 129, 0.12);
+  border-color: rgba(67, 181, 129, 0.3);
+  color: var(--color-success);
+}
+.good .dot {
+  background-color: var(--color-success);
+}
+
+.warn {
+  background-color: rgba(250, 166, 26, 0.12);
+  border-color: rgba(250, 166, 26, 0.3);
+  color: var(--color-warning);
+}
+.warn .dot {
+  background-color: var(--color-warning);
+}
+
+.bad {
+  background-color: rgba(240, 71, 71, 0.12);
+  border-color: rgba(240, 71, 71, 0.3);
+  color: var(--color-danger);
+}
+.bad .dot {
+  background-color: var(--color-danger);
+}

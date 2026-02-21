@@ -18,6 +18,121 @@ export interface AudioConfig {
   echo_cancellation: boolean;
 }
 
+// --- Erweiterte Audio-Typen (Phase 3) ---
+
+export interface CodecConfig {
+  sampleRate: number;
+  bufferSize: number;
+  bitrate: number;
+  frameSize: number;
+  application: "voip" | "audio" | "low_delay";
+  fec: boolean;
+  dtx: boolean;
+  channels: "mono" | "stereo";
+}
+
+export interface DspConfig {
+  noiseGate: {
+    enabled: boolean;
+    threshold: number;
+    attack: number;
+    release: number;
+  };
+  noiseSuppression: {
+    enabled: boolean;
+    level: "low" | "medium" | "high";
+  };
+  agc: {
+    enabled: boolean;
+    targetLevel: number;
+    maxGain: number;
+    attack: number;
+    release: number;
+  };
+  echoCancellation: {
+    enabled: boolean;
+    tailLength: number;
+  };
+  deesser: {
+    enabled: boolean;
+    frequency: number;
+    threshold: number;
+    ratio: number;
+  };
+}
+
+export interface JitterConfig {
+  minBuffer: number;
+  maxBuffer: number;
+  adaptive: boolean;
+}
+
+export interface AudioSettingsConfig {
+  inputDeviceId: string | null;
+  outputDeviceId: string | null;
+  voiceMode: "ptt_hold" | "ptt_toggle" | "vad";
+  pttKey: string | null;
+  vadSensitivity: number;
+  preset: "speech" | "balanced" | "music" | "low_bandwidth" | "custom";
+  noiseSuppression: "off" | "low" | "medium" | "high";
+  inputVolume: number;
+  outputVolume: number;
+  codec: CodecConfig;
+  dsp: DspConfig;
+  jitter: JitterConfig;
+}
+
+export interface LatencyBreakdown {
+  device: number;
+  encoding: number;
+  jitter: number;
+  network: number;
+  total: number;
+}
+
+export interface AudioStats {
+  inputLevel: number;
+  outputLevel: number;
+  processedLevel: number;
+  noiseFloor: number;
+  isClipping: boolean;
+  latency: LatencyBreakdown;
+  packetLoss: number;
+  rtt: number;
+  bitrate: number;
+}
+
+export interface CalibrationResult {
+  success: boolean;
+  suggestedVadSensitivity: number;
+  suggestedInputVolume: number;
+  noiseFloor: number;
+}
+
+// --- IPC Commands (Phase 3) ---
+
+export async function getAudioSettings(): Promise<AudioSettingsConfig> {
+  return invoke("get_audio_settings");
+}
+
+export async function setAudioSettings(
+  config: AudioSettingsConfig
+): Promise<void> {
+  return invoke("set_audio_settings", { config });
+}
+
+export async function startCalibration(): Promise<CalibrationResult> {
+  return invoke("start_calibration");
+}
+
+export async function getAudioStats(): Promise<AudioStats> {
+  return invoke("get_audio_stats");
+}
+
+export async function playTestSound(): Promise<void> {
+  return invoke("play_test_sound");
+}
+
 export interface ServerInfo {
   name: string;
   description: string;
