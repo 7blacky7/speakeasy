@@ -162,6 +162,18 @@ where
 
     let user_id = UserId(benutzer.id);
 
+    // Client in Presence registrieren
+    state.presence.client_verbunden(crate::presence::ClientPresence {
+        user_id,
+        username: benutzer.username.clone(),
+        display_name: benutzer.username.clone(),
+        channel_id: None,
+        is_input_muted: false,
+        is_output_muted: false,
+        is_away: false,
+        away_message: None,
+    });
+
     // Auto-Join: User automatisch in Default-Channel bewegen
     if let Ok(Some(default_channel)) = ChannelRepository::get_default(state.db.as_ref()).await {
         let channel_id = ChannelId(default_channel.id);
