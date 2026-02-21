@@ -24,14 +24,17 @@ repository = "https://github.com/7blacky7/speakeasy"
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
-# REST (Axum)
-axum = { version = "0.8", features = ["json", "macros"] }
-tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+# REST (Axum) – Version 0.7 fuer Kompatibilitaet mit tonic 0.12
+axum = { version = "0.7", features = ["json", "macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # gRPC
 tonic = "0.12"
 prost = "0.13"
+
+# async-trait (benoetigt fuer axum FromRequestParts)
+async-trait = "0.1"
 
 # TCP/TLS
 tokio-rustls = "0.26"

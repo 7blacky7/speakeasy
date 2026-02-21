@@ -1,0 +1,47 @@
+[package]
+name = "speakeasy-commander"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Speakeasy Commander – REST, TCP/TLS und gRPC Verwaltungsschnittstellen"
+
+[dependencies]
+speakeasy-core = { path = "../core" }
+speakeasy-protocol = { path = "../protocol" }
+speakeasy-db = { path = "../db" }
+speakeasy-auth = { path = "../auth" }
+
+# REST (Axum)
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+
+# gRPC
+tonic.workspace = true
+prost.workspace = true
+
+# TCP/TLS
+tokio-rustls.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
+
+# Workspace
+tokio.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+# Zusaetzliche Abhaengigkeiten
+dashmap.workspace = true
+parking_lot.workspace = true
+base64.workspace = true
+bytes.workspace = true
+async-trait.workspace = true
+
+[build-dependencies]
+tonic-build = "0.12"
