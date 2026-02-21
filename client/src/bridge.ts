@@ -291,6 +291,44 @@ export async function listFiles(channelId: string): Promise<FileInfo[]> {
   return invoke("list_files", { channelId });
 }
 
+// --- Channel-CRUD Commands (Phase 8.1) ---
+
+export async function createChannel(
+  name: string,
+  description?: string,
+  password?: string,
+  maxClients?: number,
+  parentId?: string
+): Promise<ChannelInfo> {
+  return invoke("create_channel", {
+    name,
+    description: description ?? null,
+    password: password ?? null,
+    maxClients: maxClients ?? null,
+    parentId: parentId ?? null,
+  });
+}
+
+export async function editChannel(
+  channelId: string,
+  name?: string,
+  description?: string,
+  password?: string,
+  maxClients?: number
+): Promise<void> {
+  return invoke("edit_channel", {
+    channelId,
+    name: name ?? null,
+    description: description ?? null,
+    password: password ?? null,
+    maxClients: maxClients ?? null,
+  });
+}
+
+export async function deleteChannel(channelId: string): Promise<void> {
+  return invoke("delete_channel", { channelId });
+}
+
 // --- Plugin-Typen (Phase 5) ---
 
 export type PluginState = "Geladen" | "Aktiv" | "Deaktiviert" | { Fehler: string };

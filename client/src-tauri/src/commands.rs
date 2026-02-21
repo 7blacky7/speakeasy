@@ -4,8 +4,8 @@ use tracing::{debug, info, warn};
 
 use speakeasy_core::types::ChannelId;
 use speakeasy_protocol::control::{
-    ChatDeleteRequest, ChatEditRequest, ChatHistoryRequest, ChatSendRequest, ControlPayload,
-    FileUploadRequest,
+    ChannelCreateRequest, ChannelDeleteRequest, ChannelEditRequest, ChatDeleteRequest,
+    ChatEditRequest, ChatHistoryRequest, ChatSendRequest, ControlPayload, FileUploadRequest,
 };
 
 use crate::connection::ServerConnection;
@@ -1332,6 +1332,152 @@ fn parse_plugin_id(id: &str) -> Result<speakeasy_plugin::types::PluginId, String
     let uuid = uuid::Uuid::parse_str(id)
         .map_err(|e| format!("Ungueltige Plugin-ID '{}': {}", id, e))?;
     Ok(speakeasy_plugin::types::PluginId(uuid))
+}
+
+/// Erstellt einen neuen Channel auf dem Server
+#[tauri::command]
+pub async fn create_channel(
+    state: State<'_, AppState>,
+    name: String,
+    description: Option<String>,
+    password: Option<String>,
+    max_clients: Option<u32>,
+    parent_id: Option<String>,
+) -> Result<ChannelInfo, String> {
+    debug!("Erstelle Channel '{}'", name);
+
+    let parent_channel_id = if let Some(ref pid) = parent_id {
+        let uuid = uuid::Uuid::parse_str(pid)
+            .map_err(|_| format!("Ungueltige parent_id '{}': keine gueltige UUID", pid))?;
+        Some(speakeasy_core::types::ChannelId(uuid))
+    } else {
+        None
+    };
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChannelCreate(ChannelCreateRequest {
+            name: name.clone(),
+            description: description.clone(),
+            parent_id: parent_channel_id,
+            password,
+            max_clients,
+            sort_order: None,
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChannelCreateResponse(resp) => {
+            info!("Channel '{}' erstellt: id={}", name, resp.channel_id.inner());
+            Ok(ChannelInfo {
+                id: resp.channel_id.inner().to_string(),
+                name,
+                description: description.unwrap_or_default(),
+                parent_id: parent_id,
+                clients: vec![],
+                max_clients: max_clients.unwrap_or(0),
+            })
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
+}
+
+/// Bearbeitet einen bestehenden Channel
+#[tauri::command]
+pub async fn edit_channel(
+    state: State<'_, AppState>,
+    channel_id: String,
+    name: Option<String>,
+    description: Option<String>,
+    password: Option<String>,
+    max_clients: Option<u32>,
+) -> Result<(), String> {
+    debug!("Bearbeite Channel {}", channel_id);
+
+    let cid = parse_channel_id(&channel_id)?;
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChannelEdit(ChannelEditRequest {
+            channel_id: cid,
+            name,
+            description,
+            password,
+            max_clients,
+            sort_order: None,
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChannelList => {
+            info!("Channel {} erfolgreich bearbeitet", channel_id);
+            Ok(())
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
+}
+
+/// Loescht einen Channel vom Server
+#[tauri::command]
+pub async fn delete_channel(
+    state: State<'_, AppState>,
+    channel_id: String,
+) -> Result<(), String> {
+    debug!("Loesche Channel {}", channel_id);
+
+    let cid = parse_channel_id(&channel_id)?;
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChannelDelete(ChannelDeleteRequest {
+            channel_id: cid,
+            move_clients_to: None,
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChannelList => {
+            info!("Channel {} erfolgreich geloescht", channel_id);
+            Ok(())
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
 /// Gibt Server-Informationen zurueck

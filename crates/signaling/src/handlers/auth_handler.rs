@@ -6,7 +6,7 @@
 
 use crate::error::SignalingResult;
 use crate::server_state::SignalingState;
-use speakeasy_core::types::UserId;
+use speakeasy_core::types::{ChannelId, UserId};
 use speakeasy_db::{
     repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
     PermissionRepository, ServerGroupRepository,
@@ -156,6 +156,21 @@ where
         }
     };
 
+    let user_id = UserId(benutzer.id);
+
+    // Auto-Join: User automatisch in Default-Channel bewegen
+    if let Ok(Some(default_channel)) = ChannelRepository::get_default(state.db.as_ref()).await {
+        let channel_id = ChannelId(default_channel.id);
+        state.presence.channel_beitreten(user_id, channel_id);
+        state.broadcaster.channel_beitreten(user_id, channel_id);
+        tracing::debug!(
+            user_id = %user_id,
+            channel_id = %channel_id,
+            channel_name = %default_channel.name,
+            "User automatisch in Default-Channel eingetreten"
+        );
+    }
+
     tracing::info!(
         user_id = %benutzer.id,
         username = %benutzer.username,
@@ -166,7 +181,7 @@ where
     ControlMessage::new(
         request_id,
         ControlPayload::LoginResponse(LoginResponse {
-            user_id: UserId(benutzer.id),
+            user_id,
             session_token: session.token,
             server_id: state.config.server_id,
             expires_at,

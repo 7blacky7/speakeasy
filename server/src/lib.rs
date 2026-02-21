@@ -15,9 +15,11 @@ use speakeasy_auth::{ApiTokenStore, AuthService, BanService, PermissionService, 
 use speakeasy_commander::rest::{CommanderState, ExecutorFn, TokenValidatorFn};
 use speakeasy_commander::{CommandExecutor, RateLimitKonfig, RateLimiter};
 use speakeasy_db::{
-    repository::{DatabaseBackend, DatabaseConfig, UserRepository},
+    models::{KanalTyp, NeuerKanal},
+    repository::{ChannelRepository, DatabaseBackend, DatabaseConfig, UserRepository},
     SqliteDb,
 };
+// UserRepository explizit importiert fuer UFCS-Aufrufe
 use speakeasy_plugin::{ManagerKonfiguration, PluginManager};
 use speakeasy_signaling::{server_state::SignalingConfig, SignalingServer};
 use speakeasy_voice::udp::{VoiceServer, VoiceServerConfig};
@@ -108,7 +110,7 @@ impl Server {
 
         tracing::info!("Auth-, Permission- und Ban-Services initialisiert");
 
-        // --- 3. Erster Start: Admin-Benutzer anlegen ---
+        // --- 3. Erster Start: Admin-Benutzer und Default-Channel anlegen ---
         ersten_start_initialisieren(&db, &auth_service).await?;
 
         let _state = Arc::new(ServerState {
@@ -373,12 +375,13 @@ impl Server {
 
 /// Prueft beim ersten Start ob Benutzer vorhanden sind.
 /// Wenn nicht, wird ein Admin-Benutzer mit Standardpasswort angelegt.
+/// Anschliessend wird geprueft ob ein Default-Channel existiert.
+/// Wenn nicht, wird ein permanenter "Default Channel" angelegt.
 async fn ersten_start_initialisieren(
     db: &SqliteDb,
     auth_service: &AuthService<SqliteDb>,
 ) -> Result<()> {
-    let alle_benutzer = db
-        .list(false)
+    let alle_benutzer = UserRepository::list(db, false)
         .await
         .map_err(|e| anyhow::anyhow!("Benutzer-Abfrage fehlgeschlagen: {e}"))?;
 
@@ -412,6 +415,52 @@ async fn ersten_start_initialisieren(
             anzahl_benutzer = alle_benutzer.len(),
             "Bestehende Installation erkannt, kein erster Start"
         );
+    }
+
+    // Default-Channel sicherstellen
+    default_channel_initialisieren(db).await?;
+
+    Ok(())
+}
+
+/// Stellt sicher dass mindestens ein Default-Channel existiert.
+/// Legt "Default Channel" an wenn keiner vorhanden ist.
+async fn default_channel_initialisieren(db: &SqliteDb) -> Result<()> {
+    let vorhandener_default = ChannelRepository::get_default(db)
+        .await
+        .map_err(|e| anyhow::anyhow!("Default-Channel-Pruefung fehlgeschlagen: {e}"))?;
+
+    if vorhandener_default.is_none() {
+        tracing::info!("Kein Default-Channel gefunden. Lege 'Default Channel' an.");
+
+        match ChannelRepository::create(
+            db,
+            NeuerKanal {
+                name: "Default Channel",
+                parent_id: None,
+                topic: Some("Willkommen auf dem Server"),
+                password_hash: None,
+                max_clients: 0,
+                is_default: true,
+                sort_order: 0,
+                channel_type: KanalTyp::Voice,
+            },
+        )
+        .await
+        {
+            Ok(kanal) => {
+                tracing::info!(
+                    channel_id = %kanal.id,
+                    name = %kanal.name,
+                    "Default-Channel angelegt"
+                );
+            }
+            Err(e) => {
+                tracing::warn!("Default-Channel konnte nicht angelegt werden: {}", e);
+            }
+        }
+    } else {
+        tracing::debug!("Default-Channel bereits vorhanden");
     }
 
     Ok(())

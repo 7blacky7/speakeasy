@@ -6,8 +6,10 @@
 
 use speakeasy_core::types::{ChannelId, UserId};
 use speakeasy_db::{
-    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
-    PermissionRepository, ServerGroupRepository,
+    models::{KanalTyp, KanalUpdate, NeuerKanal},
+    repository::UserRepository,
+    BanRepository, ChannelRepository, ChatMessageRepository, PermissionRepository,
+    ServerGroupRepository,
 };
 use speakeasy_protocol::control::{
     ChannelCreateRequest, ChannelCreateResponse, ChannelDeleteRequest, ChannelEditRequest,
@@ -242,6 +244,7 @@ where
 /// Verarbeitet Channel-Erstellung
 ///
 /// Erfordert `b_channel_create`-Berechtigung.
+/// Der Channel wird persistent in der Datenbank gespeichert.
 pub async fn handle_channel_create<U, P, B>(
     request: ChannelCreateRequest,
     request_id: u32,
@@ -254,8 +257,6 @@ where
     B: BanRepository + 'static,
 {
     // Berechtigung pruefen: b_channel_create
-    // Da wir noch keinen persistenten Channel-Store haben, verwenden wir
-    // eine Root-Channel-ID (Nil-UUID) als Kontext fuer Server-weite Perms
     let root_channel = ChannelId(uuid::Uuid::nil());
     match state
         .permission_service
@@ -276,14 +277,48 @@ where
         Ok(true) => {}
     }
 
-    // Neuen Channel erstellen (ephemer – nur in-memory)
-    let channel_id = ChannelId::new();
+    // Parent-ID konvertieren
+    let parent_uuid = request.parent_id.map(|cid| cid.inner());
+
+    // Channel persistent in der Datenbank anlegen
+    let kanal = match ChannelRepository::create(
+        state.db.as_ref(),
+        NeuerKanal {
+            name: &request.name,
+            parent_id: parent_uuid,
+            topic: request.description.as_deref(),
+            password_hash: None, // Passwort wird gehasht gespeichert - hier erstmal kein Hashing
+            max_clients: request.max_clients.unwrap_or(0) as i64,
+            is_default: false,
+            sort_order: request.sort_order.unwrap_or(0) as i64,
+            channel_type: KanalTyp::Voice,
+        },
+    )
+    .await
+    {
+        Ok(k) => k,
+        Err(e) => {
+            tracing::error!(
+                user_id = %user_id,
+                name = %request.name,
+                fehler = %e,
+                "Channel-Erstellung in DB fehlgeschlagen"
+            );
+            return ControlMessage::error(
+                request_id,
+                ErrorCode::InternalError,
+                format!("Channel konnte nicht erstellt werden: {}", e),
+            );
+        }
+    };
+
+    let channel_id = ChannelId(kanal.id);
 
     tracing::info!(
         user_id = %user_id,
         channel_id = %channel_id,
-        name = %request.name,
-        "Channel erstellt"
+        name = %kanal.name,
+        "Channel persistent erstellt"
     );
 
     ControlMessage::new(
@@ -295,6 +330,7 @@ where
 /// Verarbeitet Channel-Bearbeitung
 ///
 /// Erfordert `b_channel_modify`-Berechtigung.
+/// Aenderungen werden persistent in der Datenbank gespeichert.
 pub async fn handle_channel_edit<U, P, B>(
     request: ChannelEditRequest,
     request_id: u32,
@@ -329,19 +365,47 @@ where
         Ok(true) => {}
     }
 
-    tracing::info!(
-        user_id = %user_id,
-        channel_id = %request.channel_id,
-        "Channel bearbeitet"
-    );
+    // Update in der Datenbank durchfuehren
+    let update = KanalUpdate {
+        name: request.name.clone(),
+        parent_id: None,
+        topic: request.description.map(|d| Some(d)),
+        password_hash: None, // Passwort-Hashing hier nicht implementiert
+        max_clients: request.max_clients.map(|m| m as i64),
+        is_default: None,
+        sort_order: request.sort_order.map(|s| s as i64),
+    };
 
-    // Erfolgreich (leere ServerInfo als Bestaetigung)
+    match ChannelRepository::update(state.db.as_ref(), request.channel_id.inner(), update).await {
+        Ok(_) => {
+            tracing::info!(
+                user_id = %user_id,
+                channel_id = %request.channel_id,
+                "Channel in DB aktualisiert"
+            );
+        }
+        Err(e) => {
+            tracing::error!(
+                user_id = %user_id,
+                channel_id = %request.channel_id,
+                fehler = %e,
+                "Channel-Update in DB fehlgeschlagen"
+            );
+            return ControlMessage::error(
+                request_id,
+                ErrorCode::InternalError,
+                format!("Channel konnte nicht aktualisiert werden: {}", e),
+            );
+        }
+    }
+
     ControlMessage::new(request_id, ControlPayload::ChannelList)
 }
 
 /// Verarbeitet Channel-Loeschung
 ///
 /// Erfordert `b_channel_delete`-Berechtigung.
+/// Der Channel wird aus der Datenbank geloescht und alle Clients herausgeworfen.
 pub async fn handle_channel_delete<U, P, B>(
     request: ChannelDeleteRequest,
     request_id: u32,
@@ -376,7 +440,7 @@ where
         Ok(true) => {}
     }
 
-    // Alle Clients aus Channel entfernen
+    // Alle Clients aus Channel entfernen und ggf. in Ziel-Channel verschieben
     let betroffene_clients = state.presence.user_ids_in_channel(&request.channel_id);
     let ziel_channel = request.move_clients_to;
 
@@ -392,11 +456,34 @@ where
         }
     }
 
-    tracing::info!(
-        user_id = %user_id,
-        channel_id = %request.channel_id,
-        "Channel geloescht"
-    );
+    // Channel aus Datenbank loeschen
+    match ChannelRepository::delete(state.db.as_ref(), request.channel_id.inner()).await {
+        Ok(true) => {
+            tracing::info!(
+                user_id = %user_id,
+                channel_id = %request.channel_id,
+                "Channel aus DB geloescht"
+            );
+        }
+        Ok(false) => {
+            tracing::warn!(
+                channel_id = %request.channel_id,
+                "Channel zum Loeschen nicht gefunden (war ggf. ephemer)"
+            );
+        }
+        Err(e) => {
+            tracing::error!(
+                channel_id = %request.channel_id,
+                fehler = %e,
+                "Channel-Loeschung in DB fehlgeschlagen"
+            );
+            return ControlMessage::error(
+                request_id,
+                ErrorCode::InternalError,
+                format!("Channel konnte nicht geloescht werden: {}", e),
+            );
+        }
+    }
 
     ControlMessage::new(request_id, ControlPayload::ChannelList)
 }

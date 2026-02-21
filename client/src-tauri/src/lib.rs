@@ -29,6 +29,10 @@ pub fn run() {
             commands::toggle_mute,
             commands::toggle_deafen,
             commands::get_server_info,
+            // Channel-CRUD Commands (Phase 8.1)
+            commands::create_channel,
+            commands::edit_channel,
+            commands::delete_channel,
             // Audio-Commands (Phase 3)
             commands::get_audio_settings,
             commands::set_audio_settings,
