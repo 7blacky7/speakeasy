@@ -25,7 +25,8 @@
   --color-text-link: #00b0f4;
 
   /* UI-Elemente */
-  --color-border: #202225;
+  --color-border: #3a3d42;
+  --color-border-input: #484b52;
   --color-scrollbar: #202225;
   --color-scrollbar-thumb: #4f545c;
 

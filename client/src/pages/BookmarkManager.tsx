@@ -1,15 +1,10 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, onMount } from "solid-js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { Bookmark } from "../components/ui/MenuBar";
+import { loadProfiles, type SoundProfile } from "../utils/soundProfiles";
 import styles from "./BookmarkManager.module.css";
 
 const BOOKMARKS_KEY = "speakeasy-bookmarks";
-
-interface Bookmark {
-  name: string;
-  address: string;
-  port: number;
-  username: string;
-}
 
 interface EditState {
   index: number;
@@ -17,11 +12,18 @@ interface EditState {
   address: string;
   port: number;
   username: string;
+  password: string;
+  soundProfileId: string;
 }
 
 export default function BookmarkManager() {
   const [bookmarks, setBookmarks] = createSignal<Bookmark[]>(loadBookmarks());
   const [editing, setEditing] = createSignal<EditState | null>(null);
+  const [soundProfiles, setSoundProfiles] = createSignal<SoundProfile[]>([]);
+
+  onMount(() => {
+    setSoundProfiles(loadProfiles());
+  });
 
   function loadBookmarks(): Bookmark[] {
     try {
@@ -54,6 +56,8 @@ export default function BookmarkManager() {
       address: bm.address,
       port: bm.port,
       username: bm.username,
+      password: bm.password ?? "",
+      soundProfileId: bm.soundProfileId ?? "",
     });
   }
 
@@ -66,10 +70,13 @@ export default function BookmarkManager() {
     if (!edit) return;
     const updated = [...bookmarks()];
     updated[edit.index] = {
+      ...updated[edit.index],
       name: edit.name,
       address: edit.address,
       port: edit.port,
       username: edit.username,
+      password: edit.password || undefined,
+      soundProfileId: edit.soundProfileId || undefined,
     };
     persist(updated);
     setEditing(null);
@@ -77,6 +84,11 @@ export default function BookmarkManager() {
 
   function handleClose() {
     getCurrentWindow().close();
+  }
+
+  function profileName(id: string | undefined): string {
+    if (!id) return "";
+    return soundProfiles().find((p) => p.id === id)?.name ?? id;
   }
 
   return (
@@ -94,6 +106,8 @@ export default function BookmarkManager() {
               <th>Adresse</th>
               <th>Port</th>
               <th>Benutzer</th>
+              <th>Passwort</th>
+              <th>Sound-Profil</th>
               <th></th>
             </tr>
           </thead>
@@ -144,6 +158,31 @@ export default function BookmarkManager() {
                         />
                       </td>
                       <td>
+                        <input
+                          class={styles.editInput}
+                          type="password"
+                          value={editing()!.password}
+                          onInput={(e) =>
+                            setEditing((prev) => prev ? { ...prev, password: e.currentTarget.value } : null)
+                          }
+                          placeholder="Leer = kein Passwort"
+                        />
+                      </td>
+                      <td>
+                        <select
+                          class={styles.editInput}
+                          value={editing()!.soundProfileId}
+                          onChange={(e) =>
+                            setEditing((prev) => prev ? { ...prev, soundProfileId: e.currentTarget.value } : null)
+                          }
+                        >
+                          <option value="">-- Kein Profil --</option>
+                          <For each={soundProfiles()}>
+                            {(p) => <option value={p.id}>{p.name}</option>}
+                          </For>
+                        </select>
+                      </td>
+                      <td>
                         <div class={styles.actions}>
                           <button class={styles.btnSave} onClick={saveEdit}>
                             Speichern
@@ -161,6 +200,10 @@ export default function BookmarkManager() {
                     <td>{bm.address}</td>
                     <td>{bm.port}</td>
                     <td>{bm.username}</td>
+                    <td class={styles.passwordCell}>
+                      {bm.password ? "••••••" : ""}
+                    </td>
+                    <td>{profileName(bm.soundProfileId)}</td>
                     <td>
                       <div class={styles.actions}>
                         <button class={styles.btnEdit} onClick={() => startEdit(i())}>

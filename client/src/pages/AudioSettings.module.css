@@ -241,3 +241,65 @@
   border: none;
   padding: 0 0 8px 0;
 }
+
+/* --- Sound-Profile --- */
+.profileRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.profileSelect {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-input);
+  border-radius: 4px;
+}
+
+.profileBtn {
+  padding: 6px 12px;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}
+
+.profileBtn:hover {
+  background: var(--color-bg-hover);
+}
+
+.profileBtnDanger {
+  composes: profileBtn;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.profileBtnDanger:hover {
+  background: rgba(237, 66, 69, 0.15);
+}
+
+.profileSaveDialog {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+
+.profileNameInput {
+  flex: 1;
+  padding: 6px 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-input);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}

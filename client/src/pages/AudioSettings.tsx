@@ -1,9 +1,11 @@
 import { A } from "@solidjs/router";
 import {
   createSignal,
+  createEffect,
   onMount,
   onCleanup,
   Show,
+  For,
   batch,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
@@ -17,7 +19,19 @@ import {
   getAudioSettings,
   getAudioStats,
   playTestSound,
+  setAudioSettings,
 } from "../bridge";
+
+import {
+  loadProfiles,
+  createProfile,
+  updateProfile,
+  deleteProfile,
+  getProfileById,
+  getActiveProfileId,
+  setActiveProfileId,
+  type SoundProfile,
+} from "../utils/soundProfiles";
 
 import ModeSwitch from "../components/audio/ModeSwitch";
 import DeviceSelector from "../components/audio/DeviceSelector";
@@ -86,6 +100,43 @@ export default function AudioSettings() {
   const [devices, setDevices] = createSignal<AudioDevice[]>([]);
   const [showCalibration, setShowCalibration] = createSignal(false);
   const [noiseLevelIndex, setNoiseLevelIndex] = createSignal(2); // "medium"
+
+  // Sound-Profil Signals
+  const [profiles, setProfiles] = createSignal<SoundProfile[]>(loadProfiles());
+  const [activeProfileId, setActiveProfileIdState] = createSignal<string | null>(getActiveProfileId());
+  const [showSaveDialog, setShowSaveDialog] = createSignal(false);
+  const [profileName, setProfileName] = createSignal("");
+
+  // Debounced auto-save: Store-Properties werden als Abhängigkeiten getrackt
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(() => {
+    // Alle relevanten Store-Felder lesen, um Reaktivität auszulösen
+    const cfg: AudioSettingsConfig = {
+      inputDeviceId: settings.inputDeviceId,
+      outputDeviceId: settings.outputDeviceId,
+      voiceMode: settings.voiceMode,
+      pttKey: settings.pttKey,
+      vadSensitivity: settings.vadSensitivity,
+      preset: settings.preset,
+      noiseSuppression: settings.noiseSuppression,
+      inputVolume: settings.inputVolume,
+      outputVolume: settings.outputVolume,
+      codec: { ...settings.codec },
+      dsp: {
+        noiseGate: { ...settings.dsp.noiseGate },
+        noiseSuppression: { ...settings.dsp.noiseSuppression },
+        agc: { ...settings.dsp.agc },
+        echoCancellation: { ...settings.dsp.echoCancellation },
+        deesser: { ...settings.dsp.deesser },
+      },
+      jitter: { ...settings.jitter },
+    };
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      setAudioSettings(cfg).catch(console.error);
+    }, 500);
+  });
+  onCleanup(() => clearTimeout(saveTimer));
 
   // Audio-Geraete und Einstellungen beim Start laden
   onMount(async () => {
@@ -167,6 +218,108 @@ export default function AudioSettings() {
     setNoiseLevelIndex(2);
   }
 
+  // Sound-Profil Handler
+  function handleProfileSelect(e: Event) {
+    const id = (e.currentTarget as HTMLSelectElement).value;
+    if (!id) {
+      setActiveProfileIdState(null);
+      setActiveProfileId(null);
+      return;
+    }
+    const profile = getProfileById(id);
+    if (!profile) return;
+    setSettings(produce((s) => { Object.assign(s, profile.settings); }));
+    const noiseIdx = NOISE_LEVELS.indexOf(profile.settings.noiseSuppression as typeof NOISE_LEVELS[number]);
+    if (noiseIdx >= 0) setNoiseLevelIndex(noiseIdx);
+    setActiveProfileIdState(id);
+    setActiveProfileId(id);
+  }
+
+  function handleSaveAs() {
+    setProfileName("");
+    setShowSaveDialog(true);
+  }
+
+  function handleOverwrite() {
+    const id = activeProfileId();
+    if (!id) return;
+    const cfg: AudioSettingsConfig = {
+      inputDeviceId: settings.inputDeviceId,
+      outputDeviceId: settings.outputDeviceId,
+      voiceMode: settings.voiceMode,
+      pttKey: settings.pttKey,
+      vadSensitivity: settings.vadSensitivity,
+      preset: settings.preset,
+      noiseSuppression: settings.noiseSuppression,
+      inputVolume: settings.inputVolume,
+      outputVolume: settings.outputVolume,
+      codec: { ...settings.codec },
+      dsp: {
+        noiseGate: { ...settings.dsp.noiseGate },
+        noiseSuppression: { ...settings.dsp.noiseSuppression },
+        agc: { ...settings.dsp.agc },
+        echoCancellation: { ...settings.dsp.echoCancellation },
+        deesser: { ...settings.dsp.deesser },
+      },
+      jitter: { ...settings.jitter },
+    };
+    updateProfile(id, { settings: cfg });
+    setProfiles(loadProfiles());
+  }
+
+  function handleRename() {
+    const id = activeProfileId();
+    if (!id) return;
+    const profile = getProfileById(id);
+    if (!profile) return;
+    const newName = prompt("Neuer Profilname:", profile.name);
+    if (!newName || !newName.trim()) return;
+    updateProfile(id, { name: newName.trim() });
+    setProfiles(loadProfiles());
+  }
+
+  function handleDeleteProfile() {
+    const id = activeProfileId();
+    if (!id) return;
+    const profile = getProfileById(id);
+    if (!profile) return;
+    if (!confirm(`Profil "${profile.name}" wirklich löschen?`)) return;
+    deleteProfile(id);
+    setActiveProfileIdState(null);
+    setProfiles(loadProfiles());
+  }
+
+  function handleSaveConfirm() {
+    const name = profileName().trim();
+    if (!name) return;
+    const cfg: AudioSettingsConfig = {
+      inputDeviceId: settings.inputDeviceId,
+      outputDeviceId: settings.outputDeviceId,
+      voiceMode: settings.voiceMode,
+      pttKey: settings.pttKey,
+      vadSensitivity: settings.vadSensitivity,
+      preset: settings.preset,
+      noiseSuppression: settings.noiseSuppression,
+      inputVolume: settings.inputVolume,
+      outputVolume: settings.outputVolume,
+      codec: { ...settings.codec },
+      dsp: {
+        noiseGate: { ...settings.dsp.noiseGate },
+        noiseSuppression: { ...settings.dsp.noiseSuppression },
+        agc: { ...settings.dsp.agc },
+        echoCancellation: { ...settings.dsp.echoCancellation },
+        deesser: { ...settings.dsp.deesser },
+      },
+      jitter: { ...settings.jitter },
+    };
+    const profile = createProfile(name, cfg);
+    setProfiles(loadProfiles());
+    setActiveProfileIdState(profile.id);
+    setActiveProfileId(profile.id);
+    setShowSaveDialog(false);
+    setProfileName("");
+  }
+
   const noiseLabel = () =>
     ["Aus", "Niedrig", "Mittel", "Hoch"][noiseLevelIndex()];
 
@@ -186,6 +339,42 @@ export default function AudioSettings() {
       </div>
 
       <div class={styles.content}>
+        {/* ---- Sound-Profil ---- */}
+        <section class={styles.section}>
+          <h2 class={styles.sectionTitle}>Sound-Profil</h2>
+          <div class={styles.sectionBody}>
+            <div class={styles.profileRow}>
+              <select
+                class={styles.profileSelect}
+                value={activeProfileId() ?? ""}
+                onChange={handleProfileSelect}
+              >
+                <option value="">-- Kein Profil --</option>
+                <For each={profiles()}>{(p) => <option value={p.id}>{p.name}</option>}</For>
+              </select>
+              <button class={styles.profileBtn} onClick={handleSaveAs}>Speichern als...</button>
+              <Show when={activeProfileId()}>
+                <button class={styles.profileBtn} onClick={handleOverwrite}>Überschreiben</button>
+                <button class={styles.profileBtn} onClick={handleRename}>Umbenennen</button>
+                <button class={styles.profileBtnDanger} onClick={handleDeleteProfile}>Löschen</button>
+              </Show>
+            </div>
+            <Show when={showSaveDialog()}>
+              <div class={styles.profileSaveDialog}>
+                <input
+                  class={styles.profileNameInput}
+                  type="text"
+                  value={profileName()}
+                  onInput={(e) => setProfileName(e.currentTarget.value)}
+                  placeholder="Profilname eingeben"
+                />
+                <button class={styles.profileBtn} onClick={handleSaveConfirm}>Speichern</button>
+                <button class={styles.profileBtn} onClick={() => setShowSaveDialog(false)}>Abbrechen</button>
+              </div>
+            </Show>
+          </div>
+        </section>
+
         {/* ---- Gerateauswahl ---- */}
         <section class={styles.section}>
           <h2 class={styles.sectionTitle}>Gerate</h2>

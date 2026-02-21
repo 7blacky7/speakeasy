@@ -1,6 +1,7 @@
 import { createSignal, For, Show, onMount, onCleanup } from "solid-js";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { connectToServer } from "../../bridge";
+import { connectToServer, setAudioSettings } from "../../bridge";
+import { getProfileById } from "../../utils/soundProfiles";
 import styles from "./MenuBar.module.css";
 
 const BOOKMARKS_KEY = "speakeasy-bookmarks";
@@ -28,6 +29,8 @@ export interface Bookmark {
   address: string;
   port: number;
   username: string;
+  password?: string;
+  soundProfileId?: string;
 }
 
 interface MenuBarProps {
@@ -83,13 +86,14 @@ export default function MenuBar(props: MenuBarProps) {
     const port = props.serverPort || Number(localStorage.getItem("speakeasy_last_port") || "9001");
     const username = props.username || localStorage.getItem("speakeasy_last_username") || "";
     const name = props.serverName || `${address}:${port}`;
+    const password = localStorage.getItem("speakeasy_last_password") || undefined;
 
     if (!address) return;
 
     const current = [...bookmarks()];
     const exists = current.some((b) => b.address === address && b.port === port);
     if (!exists) {
-      current.push({ name, address, port, username });
+      current.push({ name, address, port, username, password });
       localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(current));
       setBookmarks(current);
     }
@@ -102,10 +106,17 @@ export default function MenuBar(props: MenuBarProps) {
       props.onBookmarkConnect(bm);
     } else {
       try {
+        if (bm.soundProfileId) {
+          const profile = getProfileById(bm.soundProfileId);
+          if (profile) {
+            await setAudioSettings(profile.settings);
+          }
+        }
         await connectToServer({
           address: bm.address,
           port: bm.port,
           username: bm.username,
+          password: bm.password,
         });
       } catch (e) {
         console.error("Bookmark-Verbindung fehlgeschlagen:", e);
@@ -291,7 +302,7 @@ export default function MenuBar(props: MenuBarProps) {
             <div class={styles.separator} />
             <button
               class={styles.dropdownItem}
-              onClick={() => closeAndAction(() => openSettingsWindow("/bookmarks", "Bookmarks verwalten", 600, 400))}
+              onClick={() => closeAndAction(() => openSettingsWindow("/bookmarks", "Bookmarks verwalten", 750, 450))}
             >
               <span class={styles.dropdownLabel}>Alle anzeigen...</span>
             </button>

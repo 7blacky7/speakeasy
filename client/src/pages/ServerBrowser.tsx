@@ -42,6 +42,7 @@ export default function ServerBrowser() {
       localStorage.setItem(STORAGE_KEY_ADDRESS, address());
       localStorage.setItem(STORAGE_KEY_PORT, String(port()));
       localStorage.setItem(STORAGE_KEY_USERNAME, username());
+      localStorage.setItem("speakeasy_last_password", password());
       if (result.must_change_password) {
         setShowPasswordChange(true);
       } else {

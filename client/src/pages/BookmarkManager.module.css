@@ -162,3 +162,9 @@
 .btnCancel:hover {
   background-color: var(--color-bg-hover);
 }
+
+.passwordCell {
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: var(--color-text-muted);
+}
