@@ -1,0 +1,211 @@
+//! Auth-Handler – Login, Logout, Session-Validierung
+//!
+//! Verarbeitet alle auth-bezogenen ControlMessages und delegiert
+//! an den AuthService. Bei Erfolg wird die Session im Verbindungszustand
+//! gespeichert.
+
+use speakeasy_core::types::UserId;
+use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_protocol::control::{
+    ControlMessage, ControlPayload, ErrorCode, LoginRequest, LoginResponse, LogoutResponse,
+};
+use std::sync::Arc;
+use crate::error::SignalingResult;
+use crate::server_state::SignalingState;
+
+/// Verarbeitet eine Login-Anfrage
+///
+/// Prueft Credentials, erstellt eine Session und gibt LoginResponse zurueck.
+/// Ban-Pruefung findet VOR dem eigentlichen Login statt.
+pub async fn handle_login<U, P, B>(
+    request: LoginRequest,
+    request_id: u32,
+    peer_ip: &str,
+    state: &Arc<SignalingState<U, P, B>>,
+) -> ControlMessage
+where
+    U: UserRepository + 'static,
+    P: PermissionRepository + 'static,
+    B: BanRepository + 'static,
+{
+    // Ban-Pruefung nach IP
+    match state.ban_service.ban_pruefen(None, Some(peer_ip)).await {
+        Err(speakeasy_auth::AuthError::IpGebannt(ip)) => {
+            tracing::warn!(ip = %ip, "Login von gebannter IP abgelehnt");
+            return ControlMessage::error(
+                request_id,
+                ErrorCode::Banned,
+                format!("IP gebannt: {}", ip),
+            );
+        }
+        Err(e) => {
+            tracing::error!("Ban-Pruefung fehlgeschlagen: {}", e);
+            return ControlMessage::error(request_id, ErrorCode::InternalError, "Interner Fehler");
+        }
+        Ok(()) => {}
+    }
+
+    // Authentifizierung (Passwort oder API-Token)
+    let (benutzer, session) = if let Some(ref token) = request.token {
+        // API-Token-Authentifizierung
+        match state.auth_service.api_token_validieren(token).await {
+            Ok((user, _scopes)) => {
+                // Fuer API-Token erstellen wir eine temporaere Session
+                match state.auth_service.anmelden(&user.username, "").await {
+                    Ok(result) => result,
+                    Err(_) => {
+                        // Direkte Session-Erstellung via Token-Validierung
+                        match state.auth_service.session_validieren(token).await {
+                            Ok(_u) => {
+                                tracing::warn!("Fallback-Session-Validierung fuer Token");
+                                return ControlMessage::error(
+                                    request_id,
+                                    ErrorCode::InvalidCredentials,
+                                    "Token-Authentifizierung nicht unterstuetzt",
+                                );
+                            }
+                            Err(_) => {
+                                return ControlMessage::error(
+                                    request_id,
+                                    ErrorCode::InvalidCredentials,
+                                    "Ungueltige Anmeldedaten",
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                return ControlMessage::error(
+                    request_id,
+                    ErrorCode::InvalidCredentials,
+                    "Ungueltige Anmeldedaten",
+                );
+            }
+        }
+    } else {
+        // Passwort-Authentifizierung
+        match state
+            .auth_service
+            .anmelden(&request.username, &request.password)
+            .await
+        {
+            Ok(result) => result,
+            Err(speakeasy_auth::AuthError::UngueltigeAnmeldedaten) => {
+                tracing::warn!(username = %request.username, "Fehlgeschlagener Login");
+                return ControlMessage::error(
+                    request_id,
+                    ErrorCode::InvalidCredentials,
+                    "Ungueltige Anmeldedaten",
+                );
+            }
+            Err(speakeasy_auth::AuthError::BenutzerGesperrt) => {
+                return ControlMessage::error(
+                    request_id,
+                    ErrorCode::Banned,
+                    "Benutzer gesperrt",
+                );
+            }
+            Err(speakeasy_auth::AuthError::BenutzerGebannt(grund)) => {
+                return ControlMessage::error(
+                    request_id,
+                    ErrorCode::Banned,
+                    format!("Gebannt: {}", grund),
+                );
+            }
+            Err(e) => {
+                tracing::error!("Login-Fehler: {}", e);
+                return ControlMessage::error(
+                    request_id,
+                    ErrorCode::InternalError,
+                    "Interner Fehler",
+                );
+            }
+        }
+    };
+
+    // Ban-Pruefung nach User-ID
+    match state
+        .ban_service
+        .ban_pruefen(Some(benutzer.id), None)
+        .await
+    {
+        Err(speakeasy_auth::AuthError::BenutzerGebannt(grund)) => {
+            // Session sofort wieder invalidieren
+            let _ = state.auth_service.abmelden(&session.token).await;
+            return ControlMessage::error(
+                request_id,
+                ErrorCode::Banned,
+                format!("Gebannt: {}", grund),
+            );
+        }
+        Err(e) => {
+            tracing::error!("Ban-Pruefung fehlgeschlagen: {}", e);
+        }
+        Ok(()) => {}
+    }
+
+    // Ablaufzeit berechnen (chrono DateTime -> Unix-Timestamp)
+    let expires_at = session.laeuft_ab_am.timestamp() as u64;
+
+    tracing::info!(
+        user_id = %benutzer.id,
+        username = %benutzer.username,
+        "Login erfolgreich"
+    );
+
+    ControlMessage::new(
+        request_id,
+        ControlPayload::LoginResponse(LoginResponse {
+            user_id: UserId(benutzer.id),
+            session_token: session.token,
+            server_id: state.config.server_id,
+            expires_at,
+            server_groups: vec![], // TODO: Gruppen laden
+        }),
+    )
+}
+
+/// Verarbeitet eine Logout-Anfrage
+pub async fn handle_logout<U, P, B>(
+    session_token: &str,
+    request_id: u32,
+    state: &Arc<SignalingState<U, P, B>>,
+) -> ControlMessage
+where
+    U: UserRepository + 'static,
+    P: PermissionRepository + 'static,
+    B: BanRepository + 'static,
+{
+    match state.auth_service.abmelden(session_token).await {
+        Ok(()) => {
+            tracing::debug!("Logout erfolgreich");
+            ControlMessage::new(
+                request_id,
+                ControlPayload::LogoutResponse(LogoutResponse { success: true }),
+            )
+        }
+        Err(e) => {
+            tracing::warn!("Logout-Fehler: {}", e);
+            // Logout gilt auch bei Fehler als "erfolgreich" (idempotent)
+            ControlMessage::new(
+                request_id,
+                ControlPayload::LogoutResponse(LogoutResponse { success: true }),
+            )
+        }
+    }
+}
+
+/// Validiert einen Session-Token und gibt die UserId zurueck
+pub async fn session_validieren<U, P, B>(
+    token: &str,
+    state: &Arc<SignalingState<U, P, B>>,
+) -> SignalingResult<UserId>
+where
+    U: UserRepository + 'static,
+    P: PermissionRepository + 'static,
+    B: BanRepository + 'static,
+{
+    let benutzer = state.auth_service.session_validieren(token).await?;
+    Ok(UserId(benutzer.id))
+}

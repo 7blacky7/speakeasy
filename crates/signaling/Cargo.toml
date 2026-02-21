@@ -1,0 +1,40 @@
+[package]
+name = "speakeasy-signaling"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "TCP/TLS Signaling- und Session-Service fuer Speakeasy"
+
+[dependencies]
+# Workspace-Crates
+speakeasy-core = { path = "../core" }
+speakeasy-protocol = { path = "../protocol" }
+speakeasy-auth = { path = "../auth" }
+speakeasy-voice = { path = "../voice" }
+speakeasy-db = { path = "../db" }
+
+# Async Runtime
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Serialisierung
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Fehlerbehandlung
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+dashmap = { workspace = true }
+futures-util = "0.3"
+
+[dev-dependencies]
+tokio = { workspace = true }
+tracing-subscriber = { workspace = true }
