@@ -1,0 +1,130 @@
+.menubar {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  background-color: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 4px;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  font-size: var(--font-size-sm);
+}
+
+.menuItem {
+  position: relative;
+}
+
+.menuBtn {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  height: 22px;
+  transition: background-color 0.08s, color 0.08s;
+}
+
+.menuBtn:hover,
+.menuBtn.open {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 900;
+  min-width: 200px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: 4px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: background-color 0.08s;
+  min-height: 24px;
+}
+
+.dropdownItem:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.dropdownItem.disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+  pointer-events: none;
+}
+
+.dropdownIcon {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.dropdownLabel {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.dropdownShortcut {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  margin-left: 16px;
+}
+
+.separator {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: 4px 8px;
+}
+
+.bookmarkEntry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: background-color 0.08s;
+  min-height: 24px;
+}
+
+.bookmarkEntry:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.bookmarkAddress {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  margin-left: auto;
+}

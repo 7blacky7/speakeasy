@@ -1,0 +1,177 @@
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background-color: var(--color-bg-secondary);
+  min-width: 0;
+}
+
+.content {
+  padding: 16px;
+}
+
+.header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+
+.serverName {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.section {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.sectionContent {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.detailGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: var(--font-size-sm);
+}
+
+.detailLabel {
+  color: var(--color-text-muted);
+}
+
+.detailValue {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* --- Admin-Bearbeitungsbereich --- */
+.adminSection {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.adminTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-warning);
+  margin-bottom: 8px;
+}
+
+.formGroup {
+  margin-bottom: 8px;
+}
+
+.formLabel {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.formInput {
+  width: 100%;
+  padding: 4px 8px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 4px 8px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.formTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.saveBtn {
+  padding: 4px 16px;
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background-color 0.1s;
+  margin-top: 4px;
+}
+
+.saveBtn:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.saveResult {
+  font-size: var(--font-size-xs);
+  margin-top: 4px;
+}
+
+.saveSuccess {
+  color: var(--color-success);
+}
+
+.saveError {
+  color: var(--color-danger);
+}
+
+.placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.placeholderText {
+  opacity: 0.6;
+}
