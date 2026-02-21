@@ -1,0 +1,16 @@
+[package]
+name = "speakeasy-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Gemeinsame Typen, Traits und Fehlertypen fuer Speakeasy"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+chrono.workspace = true
