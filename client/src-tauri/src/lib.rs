@@ -26,6 +26,14 @@ pub fn run() {
             commands::toggle_mute,
             commands::toggle_deafen,
             commands::get_server_info,
+            // Chat-Commands (Phase 4)
+            commands::send_message,
+            commands::get_message_history,
+            commands::edit_message,
+            commands::delete_message,
+            commands::upload_file,
+            commands::download_file,
+            commands::list_files,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

@@ -185,6 +185,189 @@ pub async fn toggle_deafen(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(deafened)
 }
 
+// --- Chat-Datentypen (Phase 4) ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileInfo {
+    pub id: String,
+    pub filename: String,
+    pub mime_type: String,
+    pub size_bytes: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub id: String,
+    pub channel_id: String,
+    pub sender_id: String,
+    pub sender_name: String,
+    pub content: String,
+    pub message_type: String,
+    pub reply_to: Option<String>,
+    pub file_info: Option<FileInfo>,
+    pub created_at: String,
+    pub edited_at: Option<String>,
+}
+
+// --- Chat-Commands (Phase 4, Stubs) ---
+
+/// Sendet eine Text-Nachricht in einen Kanal
+#[tauri::command]
+pub async fn send_message(
+    channel_id: String,
+    content: String,
+    reply_to: Option<String>,
+) -> Result<ChatMessage, String> {
+    debug!("Sende Nachricht in Kanal {}", channel_id);
+
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    Ok(ChatMessage {
+        id: uuid_stub(),
+        channel_id,
+        sender_id: "self".to_string(),
+        sender_name: "Du".to_string(),
+        content,
+        message_type: "text".to_string(),
+        reply_to,
+        file_info: None,
+        created_at: chrono_now(),
+        edited_at: None,
+    })
+}
+
+/// Laedt die Nachrichten-History eines Kanals
+#[tauri::command]
+pub async fn get_message_history(
+    channel_id: String,
+    before: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<ChatMessage>, String> {
+    debug!(
+        "Lade Nachrichten-History fuer Kanal {} (before={:?}, limit={:?})",
+        channel_id, before, limit
+    );
+
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    Ok(vec![])
+}
+
+/// Editiert eine Nachricht
+#[tauri::command]
+pub async fn edit_message(
+    message_id: String,
+    content: String,
+) -> Result<ChatMessage, String> {
+    debug!("Editiere Nachricht {}", message_id);
+
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    Ok(ChatMessage {
+        id: message_id,
+        channel_id: String::new(),
+        sender_id: "self".to_string(),
+        sender_name: "Du".to_string(),
+        content,
+        message_type: "text".to_string(),
+        reply_to: None,
+        file_info: None,
+        created_at: chrono_now(),
+        edited_at: Some(chrono_now()),
+    })
+}
+
+/// Loescht eine Nachricht (Soft-Delete)
+#[tauri::command]
+pub async fn delete_message(message_id: String) -> Result<(), String> {
+    debug!("Loesche Nachricht {}", message_id);
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    Ok(())
+}
+
+/// Laedt eine Datei hoch und postet sie als Nachricht
+#[tauri::command]
+pub async fn upload_file(
+    channel_id: String,
+    filename: String,
+    mime_type: String,
+    data: Vec<u8>,
+) -> Result<ChatMessage, String> {
+    debug!(
+        "Lade Datei '{}' ({} Bytes) in Kanal {} hoch",
+        filename,
+        data.len(),
+        channel_id
+    );
+
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    let file_id = uuid_stub();
+    Ok(ChatMessage {
+        id: uuid_stub(),
+        channel_id,
+        sender_id: "self".to_string(),
+        sender_name: "Du".to_string(),
+        content: format!("{}:{}", file_id, filename),
+        message_type: "file".to_string(),
+        reply_to: None,
+        file_info: Some(FileInfo {
+            id: file_id,
+            filename,
+            mime_type,
+            size_bytes: data.len() as i64,
+        }),
+        created_at: chrono_now(),
+        edited_at: None,
+    })
+}
+
+/// Laedt eine Datei herunter
+#[tauri::command]
+pub async fn download_file(file_id: String) -> Result<Vec<u8>, String> {
+    debug!("Lade Datei {} herunter", file_id);
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    Ok(vec![])
+}
+
+/// Listet Dateien in einem Kanal auf
+#[tauri::command]
+pub async fn list_files(channel_id: String) -> Result<Vec<FileInfo>, String> {
+    debug!("Liste Dateien in Kanal {}", channel_id);
+    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    Ok(vec![])
+}
+
+// --- Hilfsfunktionen ---
+
+fn uuid_stub() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .subsec_nanos();
+    format!("stub-{:010}", nanos)
+}
+
+fn chrono_now() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // Minimales ISO8601-Format ohne externe Abhaengigkeit
+    let (y, mo, d, h, mi, s) = epoch_to_datetime(secs);
+    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, mo, d, h, mi, s)
+}
+
+fn epoch_to_datetime(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
+    let s = secs % 60;
+    let m = (secs / 60) % 60;
+    let h = (secs / 3600) % 24;
+    let days = secs / 86400;
+    // Vereinfacht: grobe Jahresberechnung (genuegt fuer Stubs)
+    let y = 1970 + days / 365;
+    let mo = ((days % 365) / 30) + 1;
+    let d = (days % 30) + 1;
+    (y, mo.min(12), d.min(31), h, m, s)
+}
+
 /// Gibt Server-Informationen zurueck
 #[tauri::command]
 pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, String> {
