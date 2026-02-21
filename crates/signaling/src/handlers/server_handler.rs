@@ -4,7 +4,10 @@
 //! erfordern Admin-Berechtigungen (b_server_modify / b_server_stop).
 
 use speakeasy_core::types::{ChannelId, UserId};
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, ServerEditRequest, ServerInfoResponse,
     ServerStopRequest,
@@ -19,7 +22,7 @@ pub async fn handle_server_info<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -50,7 +53,7 @@ pub async fn handle_server_edit<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -117,7 +120,7 @@ pub async fn handle_server_stop<U, P, B>(
     shutdown_tx: &tokio::sync::watch::Sender<bool>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {

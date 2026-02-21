@@ -4,8 +4,12 @@
 //! die sicher zwischen tokio-Tasks geteilt werden koennen.
 
 use speakeasy_auth::{AuthService, BanService, PermissionService};
+use speakeasy_chat::ChatService;
 use speakeasy_core::types::ServerId;
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_voice::{ChannelRouter, VoiceState};
 use std::sync::Arc;
 use std::time::Instant;
@@ -32,6 +36,10 @@ pub struct SignalingConfig {
     pub keepalive_sek: u64,
     /// Timeout fuer inaktive Verbindungen in Sekunden
     pub verbindungs_timeout_sek: u64,
+    /// Krypto-Modus fuer Voice ("none", "dtls", "e2e")
+    pub crypto_mode: String,
+    /// DTLS-Fingerprint des Servers (wenn TLS konfiguriert)
+    pub dtls_fingerprint: Option<String>,
 }
 
 impl Default for SignalingConfig {
@@ -45,6 +53,8 @@ impl Default for SignalingConfig {
             voice_server_ip: "0.0.0.0".to_string(),
             keepalive_sek: 30,
             verbindungs_timeout_sek: 90,
+            crypto_mode: "none".to_string(),
+            dtls_fingerprint: None,
         }
     }
 }
@@ -55,7 +65,7 @@ impl Default for SignalingConfig {
 /// denselben inneren Zustand.
 pub struct SignalingState<U, P, B>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -67,6 +77,10 @@ where
     pub permission_service: Arc<PermissionService<P>>,
     /// Ban-Service (Benutzer- und IP-Bans)
     pub ban_service: Arc<BanService<B>>,
+    /// Datenbank-Zugriff (fuer Server-Gruppen, Channels, Chat)
+    pub db: Arc<U>,
+    /// Chat-Service (Nachrichten senden, History, etc.)
+    pub chat_service: Arc<ChatService<U>>,
     /// Voice-State (in-memory, UDP-Sessions)
     pub voice_state: VoiceState,
     /// Channel-Router (Voice-Pakete weiterleiten)
@@ -81,7 +95,7 @@ where
 
 impl<U, P, B> SignalingState<U, P, B>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -91,12 +105,16 @@ where
         auth_service: Arc<AuthService<U>>,
         permission_service: Arc<PermissionService<P>>,
         ban_service: Arc<BanService<B>>,
+        db: Arc<U>,
+        chat_service: Arc<ChatService<U>>,
     ) -> Arc<Self> {
         Arc::new(Self {
             config: Arc::new(config),
             auth_service,
             permission_service,
             ban_service,
+            db,
+            chat_service,
             voice_state: VoiceState::neu(),
             channel_router: ChannelRouter::neu(),
             presence: PresenceManager::neu(),

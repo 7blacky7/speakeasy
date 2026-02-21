@@ -14,6 +14,8 @@ speakeasy-protocol = { path = "../protocol" }
 speakeasy-auth = { path = "../auth" }
 speakeasy-voice = { path = "../voice" }
 speakeasy-db = { path = "../db" }
+speakeasy-chat = { path = "../chat" }
+speakeasy-crypto = { path = "../crypto" }
 
 # Async Runtime
 tokio = { workspace = true }
@@ -32,6 +34,7 @@ tracing = { workspace = true }
 
 # Utilities
 uuid = { workspace = true }
+chrono = { workspace = true }
 dashmap = { workspace = true }
 futures-util = "0.3"
 

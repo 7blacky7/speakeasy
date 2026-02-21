@@ -4,7 +4,10 @@
 //! Koordiniert den Handshake zwischen TCP-Kontrollebene und UDP-Voice-Layer.
 
 use speakeasy_core::types::UserId;
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, VoiceDisconnectRequest, VoiceInitRequest, VoiceReadyResponse,
 };
@@ -36,7 +39,7 @@ pub async fn handle_voice_init<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -71,6 +74,18 @@ where
         "Voice-Init erfolgreich"
     );
 
+    // Krypto-Modus und DTLS-Fingerprint aus Server-Konfiguration laden
+    let crypto_mode = state.config.crypto_mode.clone();
+    let server_dtls_fingerprint = state.config.dtls_fingerprint.clone();
+
+    if crypto_mode != "none" && server_dtls_fingerprint.is_none() {
+        tracing::warn!(
+            user_id = %user_id,
+            crypto_mode = %crypto_mode,
+            "Krypto-Modus konfiguriert aber kein DTLS-Fingerprint verfuegbar"
+        );
+    }
+
     ControlMessage::new(
         request_id,
         ControlPayload::VoiceReady(VoiceReadyResponse {
@@ -78,8 +93,8 @@ where
             server_ip: state.config.voice_server_ip.clone(),
             ssrc,
             codec: akzeptierter_codec,
-            server_dtls_fingerprint: None, // TODO: DTLS implementieren
-            crypto_mode: "none".to_string(), // TODO: DTLS/SRTP
+            server_dtls_fingerprint,
+            crypto_mode,
         }),
     )
 }
@@ -94,7 +109,7 @@ pub async fn handle_voice_disconnect<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {

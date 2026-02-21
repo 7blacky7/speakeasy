@@ -5,7 +5,10 @@
 //! Berechtigungen.
 
 use speakeasy_core::types::{ChannelId, UserId};
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_protocol::control::{
     ChannelCreateRequest, ChannelCreateResponse, ChannelDeleteRequest, ChannelEditRequest,
     ChannelInfo, ChannelJoinRequest, ChannelJoinResponse, ChannelLeaveRequest, ChannelListResponse,
@@ -16,10 +19,31 @@ use std::sync::Arc;
 use crate::presence::ClientPresence;
 use crate::server_state::SignalingState;
 
-/// Erstellt ChannelInfo fuer einen Channel aus der Presence-Daten
-///
-/// Da wir noch keine DB-Channel-Tabelle haben, simulieren wir einfache Infos.
-fn channel_info_erstellen(channel_id: ChannelId, client_anzahl: u32) -> ChannelInfo {
+/// Erstellt ChannelInfo aus einem DB-KanalRecord
+fn channel_info_aus_record(
+    record: &speakeasy_db::models::KanalRecord,
+    client_anzahl: u32,
+) -> ChannelInfo {
+    ChannelInfo {
+        channel_id: ChannelId(record.id),
+        name: record.name.clone(),
+        description: record.topic.clone(),
+        parent_id: record.parent_id.map(ChannelId),
+        sort_order: record.sort_order as i32,
+        max_clients: if record.max_clients > 0 {
+            Some(record.max_clients as u32)
+        } else {
+            None
+        },
+        current_clients: client_anzahl,
+        password_protected: record.password_hash.is_some(),
+        codec: "opus".to_string(),
+        codec_quality: 7,
+    }
+}
+
+/// Erstellt ChannelInfo fuer einen ephemeren Channel (nicht in DB)
+fn channel_info_ephemer(channel_id: ChannelId, client_anzahl: u32) -> ChannelInfo {
     ChannelInfo {
         channel_id,
         name: format!("Channel {}", &channel_id.inner().to_string()[..8]),
@@ -54,20 +78,36 @@ pub async fn handle_channel_list<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
-    // Aktive Channels aus dem Voice-Router ermitteln
-    let aktive_kanaele = state.channel_router.aktive_kanaele();
+    // DB-Channels laden
+    let mut channels: Vec<ChannelInfo> = match ChannelRepository::list(state.db.as_ref()).await {
+        Ok(db_channels) => db_channels
+            .iter()
+            .map(|record| {
+                let cid = ChannelId(record.id);
+                let anzahl = state.presence.user_ids_in_channel(&cid).len() as u32;
+                channel_info_aus_record(record, anzahl)
+            })
+            .collect(),
+        Err(e) => {
+            tracing::warn!(fehler = %e, "DB-Channels konnten nicht geladen werden");
+            vec![]
+        }
+    };
 
-    let channels: Vec<ChannelInfo> = aktive_kanaele
-        .into_iter()
-        .map(|cid| {
+    // Ephemere Channels hinzufuegen (aktive Voice-Channels die nicht in der DB sind)
+    let db_channel_ids: std::collections::HashSet<ChannelId> =
+        channels.iter().map(|c| c.channel_id).collect();
+    let aktive_kanaele = state.channel_router.aktive_kanaele();
+    for cid in aktive_kanaele {
+        if !db_channel_ids.contains(&cid) {
             let anzahl = state.presence.user_ids_in_channel(&cid).len() as u32;
-            channel_info_erstellen(cid, anzahl)
-        })
-        .collect();
+            channels.push(channel_info_ephemer(cid, anzahl));
+        }
+    }
 
     ControlMessage::new(
         request_id,
@@ -83,17 +123,31 @@ pub async fn handle_channel_join<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
     let channel_id = request.channel_id;
 
-    // Berechtigung: channel_join
-    // Vereinfachte Pruefung – in vollstaendiger Implementierung wuerde hier
-    // der PermissionService mit konkreter Channel-ID konsultiert.
-    // Da die Channel-IDs ephemer sind, pruefen wir globale Join-Berechtigung.
-    // TODO: channel_join Berechtigung pruefen wenn DB-Channels vorhanden sind
+    // Berechtigung: b_channel_join pruefen
+    match state
+        .permission_service
+        .berechtigung_pruefen(user_id.inner(), channel_id.inner(), "b_channel_join")
+        .await
+    {
+        Ok(false) => {
+            return ControlMessage::error(
+                request_id,
+                ErrorCode::PermissionDenied,
+                "Keine Berechtigung diesem Channel beizutreten",
+            );
+        }
+        Err(e) => {
+            // Bei Fehler: Im Dev-Modus erlauben (Fallthrough)
+            tracing::error!("Berechtigungspruefung fehlgeschlagen: {}", e);
+        }
+        Ok(true) => {}
+    }
 
     // Aus altem Channel austreten wenn vorhanden
     let alter_channel = state.presence.channel_von_client(&user_id);
@@ -147,7 +201,7 @@ pub async fn handle_channel_leave<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -195,7 +249,7 @@ pub async fn handle_channel_create<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -248,7 +302,7 @@ pub async fn handle_channel_edit<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -295,7 +349,7 @@ pub async fn handle_channel_delete<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {

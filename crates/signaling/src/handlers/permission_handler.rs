@@ -7,7 +7,8 @@ use speakeasy_core::types::{ChannelId, UserId};
 use speakeasy_db::{
     models::{BerechtigungsWert, BerechtigungsZiel, TriState},
     repository::UserRepository,
-    BanRepository, PermissionRepository,
+    BanRepository, ChannelRepository, ChatMessageRepository, PermissionRepository,
+    ServerGroupRepository,
 };
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, PermissionAddRequest, PermissionEntry,
@@ -49,7 +50,7 @@ pub async fn handle_permission_list<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -142,7 +143,7 @@ pub async fn handle_permission_add<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -234,7 +235,7 @@ pub async fn handle_permission_remove<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {

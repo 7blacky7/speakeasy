@@ -9,7 +9,10 @@
 //! `tokio::task::LocalSet` auf einem single-threaded Executor.
 //! Dies ist korrekt fuer einen einzelnen Server-Prozess.
 
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -24,7 +27,7 @@ use crate::server_state::SignalingState;
 /// Jede Verbindung wird als lokaler Task in der `LocalSet` ausgefuehrt.
 pub struct SignalingServer<U, P, B>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -34,7 +37,7 @@ where
 
 impl<U, P, B> SignalingServer<U, P, B>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {

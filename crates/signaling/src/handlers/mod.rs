@@ -5,6 +5,7 @@
 
 pub mod auth_handler;
 pub mod channel_handler;
+pub mod chat_handler;
 pub mod client_handler;
 pub mod permission_handler;
 pub mod server_handler;

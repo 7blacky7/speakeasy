@@ -9,14 +9,17 @@
 //! - Alle anderen nur im `Authenticated`/`InChannel`-Zustand
 
 use speakeasy_core::types::UserId;
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_protocol::control::{ControlMessage, ControlPayload, ErrorCode};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::handlers::{
-    auth_handler, channel_handler, client_handler, permission_handler, server_handler,
-    voice_handler,
+    auth_handler, channel_handler, chat_handler, client_handler, permission_handler,
+    server_handler, voice_handler,
 };
 use crate::server_state::SignalingState;
 
@@ -38,7 +41,7 @@ pub struct DispatcherContext {
 /// gibt die Antwort-ControlMessage zurueck.
 pub struct MessageDispatcher<U, P, B>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -47,7 +50,7 @@ where
 
 impl<U, P, B> MessageDispatcher<U, P, B>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -292,6 +295,25 @@ where
             ),
 
             // -------------------------------------------------------------------
+            // Chat-Nachrichten
+            // -------------------------------------------------------------------
+            ControlPayload::ChatSend(req) => Some(
+                chat_handler::handle_chat_send(req, request_id, user_id, &self.state).await,
+            ),
+
+            ControlPayload::ChatEdit(req) => Some(
+                chat_handler::handle_chat_edit(req, request_id, user_id, &self.state).await,
+            ),
+
+            ControlPayload::ChatDelete(req) => Some(
+                chat_handler::handle_chat_delete(req, request_id, user_id, &self.state).await,
+            ),
+
+            ControlPayload::ChatHistory(req) => Some(
+                chat_handler::handle_chat_history(req, request_id, &self.state).await,
+            ),
+
+            // -------------------------------------------------------------------
             // Unbekannte / unerwartete Nachrichten
             // -------------------------------------------------------------------
             ControlPayload::LoginResponse(_)
@@ -304,6 +326,8 @@ where
             | ControlPayload::PermissionListResponse(_)
             | ControlPayload::FileListResponse(_)
             | ControlPayload::FileUploadResponse(_)
+            | ControlPayload::ChatSendResponse(_)
+            | ControlPayload::ChatHistoryResponse(_)
             | ControlPayload::VoiceReady(_)
             | ControlPayload::Error(_) => {
                 tracing::warn!(

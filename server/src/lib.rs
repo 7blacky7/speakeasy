@@ -118,7 +118,7 @@ impl Server {
         });
 
         // --- 4. Chat-Service ---
-        let _chat_service = Arc::new(speakeasy_chat::ChatService::neu(Arc::clone(&db)));
+        let chat_service = speakeasy_chat::ChatService::neu(Arc::clone(&db));
         let _file_storage = Arc::new(speakeasy_chat::DiskStorage::new("data/files"));
         tracing::info!("Chat-Service initialisiert");
 
@@ -152,12 +152,35 @@ impl Server {
         // --- 6. Signaling-Server starten (TCP) ---
         // SignalingServer nutzt LocalSet wegen async_fn_in_trait ohne Send.
         // Deshalb starten wir ihn in einem eigenen Thread mit current_thread Runtime.
+        // Krypto-Modus und DTLS-Fingerprint bestimmen
+        let (crypto_mode, dtls_fingerprint) =
+            if self.config.netzwerk.tls_zertifikat.is_some() {
+                // TLS konfiguriert -> DTLS-Modus
+                match speakeasy_crypto::generate_self_signed_cert("speakeasy-server") {
+                    Ok(dtls_config) => {
+                        tracing::info!(
+                            fingerprint = %dtls_config.certificate_fingerprint,
+                            "DTLS-Zertifikat generiert"
+                        );
+                        ("dtls".to_string(), Some(dtls_config.certificate_fingerprint))
+                    }
+                    Err(e) => {
+                        tracing::warn!(fehler = %e, "DTLS-Zertifikat konnte nicht generiert werden, fallback auf none");
+                        ("none".to_string(), None)
+                    }
+                }
+            } else {
+                ("none".to_string(), None)
+            };
+
         let signaling_config = SignalingConfig {
             server_name: self.config.server.name.clone(),
             welcome_message: self.config.server.willkommen.clone(),
             max_clients: self.config.server.max_clients,
             voice_udp_port: self.config.netzwerk.udp_port,
             voice_server_ip: self.config.netzwerk.bind_adresse.clone(),
+            crypto_mode,
+            dtls_fingerprint,
             ..Default::default()
         };
 
@@ -169,6 +192,8 @@ impl Server {
             Arc::clone(&auth_service),
             Arc::clone(&permission_service),
             Arc::clone(&ban_service),
+            Arc::clone(&db),
+            Arc::clone(&chat_service),
         );
 
         let signaling_server = SignalingServer::neu(signaling_state, tcp_addr);

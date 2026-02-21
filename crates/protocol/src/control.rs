@@ -395,6 +395,89 @@ pub struct VoiceDisconnectRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Chat-Nachrichten
+// ---------------------------------------------------------------------------
+
+/// Chat-Nachricht senden
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatSendRequest {
+    /// Kanal-ID in den die Nachricht gesendet wird
+    pub channel_id: ChannelId,
+    /// Nachrichteninhalt
+    pub content: String,
+    /// Optionale Antwort-auf-ID (Reply)
+    pub reply_to: Option<String>,
+}
+
+/// Chat-Nachricht Antwort (vom Server bestaetigt)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatSendResponse {
+    /// ID der gespeicherten Nachricht
+    pub message_id: String,
+    /// Kanal-ID
+    pub channel_id: ChannelId,
+    /// Unix-Timestamp der Erstellung
+    pub created_at: u64,
+}
+
+/// Chat-Nachricht editieren
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatEditRequest {
+    /// ID der Nachricht
+    pub message_id: String,
+    /// Neuer Inhalt
+    pub content: String,
+}
+
+/// Chat-Nachricht loeschen
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatDeleteRequest {
+    /// ID der Nachricht
+    pub message_id: String,
+}
+
+/// Chat-History eines Kanals anfordern
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatHistoryRequest {
+    /// Kanal-ID
+    pub channel_id: ChannelId,
+    /// Nachrichten vor diesem Zeitpunkt (Cursor, ISO8601 oder None fuer neueste)
+    pub before: Option<String>,
+    /// Maximale Anzahl (Default: 50)
+    pub limit: Option<i64>,
+}
+
+/// Einzelne Chat-Nachricht im Protokoll
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessageInfo {
+    /// Nachrichten-ID
+    pub message_id: String,
+    /// Kanal-ID
+    pub channel_id: ChannelId,
+    /// Absender-ID
+    pub sender_id: UserId,
+    /// Nachrichteninhalt
+    pub content: String,
+    /// Typ: "text", "file", "system"
+    pub message_type: String,
+    /// Antwort-auf-ID (Reply)
+    pub reply_to: Option<String>,
+    /// Erstellungszeitpunkt (ISO8601)
+    pub created_at: String,
+    /// Bearbeitungszeitpunkt (ISO8601, None wenn nicht editiert)
+    pub edited_at: Option<String>,
+}
+
+/// Chat-History-Antwort
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatHistoryResponse {
+    /// Kanal-ID
+    pub channel_id: ChannelId,
+    /// Nachrichten (aelteste zuerst)
+    pub messages: Vec<ChatMessageInfo>,
+}
+
+// ---------------------------------------------------------------------------
 // Keepalive
 // ---------------------------------------------------------------------------
 
@@ -466,6 +549,14 @@ pub enum ControlPayload {
     FileUpload(FileUploadRequest),
     FileUploadResponse(FileUploadResponse),
     FileDelete(FileDeleteRequest),
+
+    // Chat
+    ChatSend(ChatSendRequest),
+    ChatSendResponse(ChatSendResponse),
+    ChatEdit(ChatEditRequest),
+    ChatDelete(ChatDeleteRequest),
+    ChatHistory(ChatHistoryRequest),
+    ChatHistoryResponse(ChatHistoryResponse),
 
     // Voice Setup
     VoiceInit(VoiceInitRequest),

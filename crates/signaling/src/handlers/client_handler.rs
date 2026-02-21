@@ -4,7 +4,10 @@
 //! Permission-Keys folgen dem TeamSpeak-aehnlichen Schema (b_client_*).
 
 use speakeasy_core::types::{ChannelId, UserId};
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_protocol::control::{
     ClientBanRequest, ClientInfo, ClientKickRequest, ClientListResponse, ClientMoveRequest,
     ClientPokeRequest, ClientUpdateRequest, ControlMessage, ControlPayload, ErrorCode,
@@ -35,7 +38,7 @@ pub async fn handle_client_list<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -63,7 +66,7 @@ pub async fn handle_client_kick<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -158,7 +161,7 @@ pub async fn handle_client_ban<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -241,7 +244,7 @@ pub async fn handle_client_move<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -319,7 +322,7 @@ pub async fn handle_client_poke<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -379,7 +382,7 @@ pub async fn handle_client_update<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {

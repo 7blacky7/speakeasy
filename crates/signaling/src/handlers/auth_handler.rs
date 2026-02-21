@@ -7,7 +7,10 @@
 use crate::error::SignalingResult;
 use crate::server_state::SignalingState;
 use speakeasy_core::types::UserId;
-use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
+use speakeasy_db::{
+    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
+    PermissionRepository, ServerGroupRepository,
+};
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, LoginRequest, LoginResponse, LogoutResponse,
 };
@@ -24,7 +27,7 @@ pub async fn handle_login<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -140,9 +143,23 @@ where
     // Ablaufzeit berechnen (chrono DateTime -> Unix-Timestamp)
     let expires_at = session.laeuft_ab_am.timestamp() as u64;
 
+    // Server-Gruppen des Benutzers aus der Datenbank laden
+    let server_groups = match state.db.list_for_user(benutzer.id).await {
+        Ok(gruppen) => gruppen.into_iter().map(|g| g.name).collect(),
+        Err(e) => {
+            tracing::warn!(
+                user_id = %benutzer.id,
+                fehler = %e,
+                "Server-Gruppen konnten nicht geladen werden"
+            );
+            vec![]
+        }
+    };
+
     tracing::info!(
         user_id = %benutzer.id,
         username = %benutzer.username,
+        gruppen = ?server_groups,
         "Login erfolgreich"
     );
 
@@ -153,7 +170,7 @@ where
             session_token: session.token,
             server_id: state.config.server_id,
             expires_at,
-            server_groups: vec![], // TODO: Gruppen laden
+            server_groups,
         }),
     )
 }
@@ -165,7 +182,7 @@ pub async fn handle_logout<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> ControlMessage
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
@@ -194,7 +211,7 @@ pub async fn session_validieren<U, P, B>(
     state: &Arc<SignalingState<U, P, B>>,
 ) -> SignalingResult<UserId>
 where
-    U: UserRepository + 'static,
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
     P: PermissionRepository + 'static,
     B: BanRepository + 'static,
 {
