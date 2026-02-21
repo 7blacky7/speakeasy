@@ -20,6 +20,8 @@ import {
   getAudioStats,
   playTestSound,
   setAudioSettings,
+  startAudioMonitor,
+  stopAudioMonitor,
 } from "../bridge";
 
 import {
@@ -43,6 +45,7 @@ import LatencyDisplay from "../components/audio/LatencyDisplay";
 import LatencyBreakdown from "../components/audio/LatencyBreakdown";
 import LiveMonitor from "../components/audio/LiveMonitor";
 import CalibrationModal from "../components/audio/CalibrationModal";
+import PttKeyCapture from "../components/audio/PttKeyCapture";
 import CodecSettings from "../components/audio/CodecSettings";
 import JitterSettings from "../components/audio/JitterSettings";
 
@@ -99,6 +102,7 @@ export default function AudioSettings() {
   const [stats, setStats] = createSignal<AudioStats>(DEFAULT_STATS);
   const [devices, setDevices] = createSignal<AudioDevice[]>([]);
   const [showCalibration, setShowCalibration] = createSignal(false);
+  const [showPttCapture, setShowPttCapture] = createSignal(false);
   const [noiseLevelIndex, setNoiseLevelIndex] = createSignal(2); // "medium"
 
   // Sound-Profil Signals
@@ -138,7 +142,7 @@ export default function AudioSettings() {
   });
   onCleanup(() => clearTimeout(saveTimer));
 
-  // Audio-Geraete und Einstellungen beim Start laden
+  // Audio-Geraete und Einstellungen beim Start laden + Monitor starten
   onMount(async () => {
     try {
       const devList = await getAudioDevices();
@@ -155,6 +159,18 @@ export default function AudioSettings() {
     } catch {
       // Fallback auf lokale Defaults
     }
+
+    // Audio-Monitor starten fuer Echtzeit-Pegel
+    try {
+      await startAudioMonitor();
+    } catch {
+      // Monitor nicht verfuegbar - kein Problem
+    }
+  });
+
+  // Audio-Monitor stoppen beim Verlassen der Seite
+  onCleanup(() => {
+    stopAudioMonitor().catch(() => {});
   });
 
   // Audio-Stats polling (5x pro Sekunde)
@@ -407,7 +423,7 @@ export default function AudioSettings() {
               pttKey={settings.pttKey}
               vadSensitivity={settings.vadSensitivity}
               onModeChange={(m) => setSettings("voiceMode", m)}
-              onPttKeyChange={() => {}}
+              onPttKeyChange={() => setShowPttCapture(true)}
               onVadSensitivityChange={(v) => setSettings("vadSensitivity", v)}
             />
           </div>
@@ -713,6 +729,18 @@ export default function AudioSettings() {
         <CalibrationModal
           onClose={() => setShowCalibration(false)}
           onApply={handleCalibrationApply}
+        />
+      </Show>
+
+      {/* PTT-Hotkey-Capture */}
+      <Show when={showPttCapture()}>
+        <PttKeyCapture
+          currentKey={settings.pttKey}
+          onConfirm={(key) => {
+            setSettings("pttKey", key);
+            setShowPttCapture(false);
+          }}
+          onCancel={() => setShowPttCapture(false)}
         />
       </Show>
     </div>

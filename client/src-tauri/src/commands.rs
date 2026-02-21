@@ -709,34 +709,34 @@ pub async fn get_audio_settings(state: State<'_, AppState>) -> Result<AudioSetti
     debug!("Frage Audio-Einstellungen ab");
     let audio = state.audio.lock().map_err(|e| e.to_string())?;
 
-    if let Some(ref cfg) = audio.engine_config {
-        // Aus gespeicherter Engine-Config rekonstruieren
-        let mut settings = default_audio_settings();
-        settings.input_device_id = cfg.input_device.clone();
-        settings.output_device_id = cfg.output_device.clone();
-        settings.codec.sample_rate = cfg.capture.sample_rate;
-        settings.codec.buffer_size = cfg.capture.buffer_size as u32;
-        Ok(settings)
+    // Vollstaendige Settings zurueckgeben (falls vorhanden)
+    if let Some(ref settings) = audio.full_settings {
+        Ok(settings.clone())
     } else {
         Ok(default_audio_settings())
     }
 }
 
-/// Speichert Audio-Einstellungen
+/// Speichert Audio-Einstellungen (vollstaendig inkl. DSP, Codec, Jitter)
 #[tauri::command]
 pub async fn set_audio_settings(
     state: State<'_, AppState>,
     config: AudioSettingsConfig,
 ) -> Result<(), String> {
     debug!(
-        "Setze Audio-Einstellungen: input={:?}, output={:?}",
-        config.input_device_id, config.output_device_id
+        "Setze Audio-Einstellungen: input={:?}, output={:?}, dsp_noise_gate={}, dsp_suppression={}, dsp_agc={}",
+        config.input_device_id,
+        config.output_device_id,
+        config.dsp.noise_gate.enabled,
+        config.dsp.noise_suppression.enabled,
+        config.dsp.agc.enabled,
     );
 
     use speakeasy_audio::capture::CaptureConfig;
 
     let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
 
+    // Engine-Config aktualisieren (Device + Capture)
     let mut engine_config = audio.engine_config.clone().unwrap_or_default();
     engine_config.input_device = config.input_device_id.clone();
     engine_config.output_device = config.output_device_id.clone();
@@ -746,9 +746,19 @@ pub async fn set_audio_settings(
     capture.buffer_size = config.codec.buffer_size as usize;
     engine_config.capture = capture;
 
+    // PTT-Modus aus Voice-Mode ableiten
+    engine_config.ptt_mode = match config.voice_mode.as_str() {
+        "ptt_hold" => speakeasy_audio::ptt::PttMode::Hold,
+        "ptt_toggle" => speakeasy_audio::ptt::PttMode::Toggle,
+        _ => speakeasy_audio::ptt::PttMode::VoiceActivation,
+    };
+
     audio.engine_config = Some(engine_config);
 
-    info!("Audio-Einstellungen gespeichert");
+    // Vollstaendige Settings persistieren (inkl. DSP, Codec, Jitter)
+    audio.full_settings = Some(config);
+
+    info!("Audio-Einstellungen gespeichert (inkl. DSP-Pipeline-Konfiguration)");
     Ok(())
 }
 
@@ -866,29 +876,264 @@ pub async fn start_calibration(state: State<'_, AppState>) -> Result<Calibration
     }
 }
 
-/// Gibt aktuelle Audio-Statistiken zurueck
-#[tauri::command]
-pub async fn get_audio_stats() -> Result<AudioStats, String> {
-    debug!("Frage Audio-Statistiken ab");
+/// Baut eine DSP-Pipeline aus den Frontend-Einstellungen
+fn build_pipeline_from_dsp_config(dsp: &DspConfig) -> speakeasy_audio::pipeline::AudioPipeline {
+    use speakeasy_audio::dsp::{
+        AudioProcessor,
+        agc::{Agc, AgcConfig as RustAgcConfig},
+        deesser::{DeEsser, DeEsserConfig as RustDeEsserConfig},
+        echo_cancel::{EchoCancelConfig as RustEchoCancelConfig, EchoCanceller},
+        noise_gate::{NoiseGate, NoiseGateConfig as RustNoiseGateConfig},
+        noise_suppression::{NoiseSuppressor, SuppressionLevel},
+    };
 
-    // Basis-Stats ohne laufende Engine
-    Ok(AudioStats {
+    let mut processors: Vec<Box<dyn speakeasy_audio::dsp::AudioProcessor>> = Vec::new();
+
+    // Noise Gate
+    let mut ng = NoiseGate::new(RustNoiseGateConfig {
+        threshold_open_db: dsp.noise_gate.threshold,
+        threshold_close_db: dsp.noise_gate.threshold - 5.0,
+        attack_secs: dsp.noise_gate.attack / 1000.0,
+        release_secs: dsp.noise_gate.release / 1000.0,
+        sample_rate: 48000.0,
+    });
+    ng.set_enabled(dsp.noise_gate.enabled);
+    processors.push(Box::new(ng));
+
+    // Noise Suppression
+    let level = match dsp.noise_suppression.level.as_str() {
+        "low" => SuppressionLevel::Low,
+        "high" => SuppressionLevel::High,
+        _ => SuppressionLevel::Medium,
+    };
+    let mut ns = NoiseSuppressor::new(level);
+    ns.set_enabled(dsp.noise_suppression.enabled);
+    processors.push(Box::new(ns));
+
+    // AGC
+    let mut agc = Agc::new(RustAgcConfig {
+        target_level: 10.0_f32.powf(dsp.agc.target_level / 20.0), // dB -> linear
+        max_gain: 10.0_f32.powf(dsp.agc.max_gain / 20.0),
+        ..RustAgcConfig::default()
+    });
+    agc.set_enabled(dsp.agc.enabled);
+    processors.push(Box::new(agc));
+
+    // Echo Cancellation
+    let mut ec = EchoCanceller::new(RustEchoCancelConfig {
+        max_delay_samples: (dsp.echo_cancellation.tail_length as f32 * 48.0) as usize,
+        ..RustEchoCancelConfig::default()
+    });
+    ec.set_enabled(dsp.echo_cancellation.enabled);
+    processors.push(Box::new(ec));
+
+    // De-Esser
+    let mut de = DeEsser::new(RustDeEsserConfig {
+        threshold: 10.0_f32.powf(dsp.deesser.threshold / 20.0),
+        ratio: dsp.deesser.ratio,
+        ..RustDeEsserConfig::default()
+    });
+    de.set_enabled(dsp.deesser.enabled);
+    processors.push(Box::new(de));
+
+    speakeasy_audio::pipeline::AudioPipeline::new(processors)
+}
+
+/// Startet den Audio-Monitor (Echtzeit-Pegel vom Mikrofon mit DSP-Pipeline)
+#[tauri::command]
+pub async fn start_audio_monitor(state: State<'_, AppState>) -> Result<(), String> {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use crate::state::{AudioMonitor, MonitorLevels};
+
+    // Pruefen ob bereits ein Monitor laeuft
+    {
+        let audio = state.audio.lock().map_err(|e| e.to_string())?;
+        if audio.monitor.is_some() {
+            debug!("Audio-Monitor laeuft bereits");
+            return Ok(());
+        }
+    }
+
+    // Input-Device und DSP-Config laden
+    let (input_device_name, dsp_config) = {
+        let audio = state.audio.lock().map_err(|e| e.to_string())?;
+        let device = audio.engine_config.as_ref().and_then(|c| c.input_device.clone());
+        let dsp = audio.full_settings.as_ref().map(|s| s.dsp.clone());
+        (device, dsp)
+    };
+
+    let levels = Arc::new(std::sync::Mutex::new(MonitorLevels {
         input_level: 0.0,
-        output_level: 0.0,
         processed_level: 0.0,
         noise_floor: -60.0,
         is_clipping: false,
-        latency: LatencyBreakdown {
-            device: 10.0,
-            encoding: 20.0,
-            jitter: 40.0,
-            network: 0.0,
-            total: 70.0,
-        },
-        packet_loss: 0.0,
-        rtt: 0.0,
-        bitrate: 64000.0,
-    })
+    }));
+    let running = Arc::new(AtomicBool::new(true));
+
+    let levels_writer = Arc::clone(&levels);
+    let running_thread = Arc::clone(&running);
+
+    // Dedizierter Thread: cpal-Stream + DSP-Pipeline erstellen und am Leben halten
+    std::thread::Builder::new()
+        .name("speakeasy-audio-monitor".to_string())
+        .spawn(move || {
+            use cpal::traits::{DeviceTrait, StreamTrait};
+
+            let device = match speakeasy_audio::device::load_cpal_input_device(input_device_name.as_deref()) {
+                Ok(d) => d,
+                Err(e) => {
+                    warn!("Audio-Monitor: Kein Mikrofon gefunden: {}", e);
+                    return;
+                }
+            };
+
+            let config = cpal::StreamConfig {
+                channels: 1,
+                sample_rate: cpal::SampleRate(48000),
+                buffer_size: cpal::BufferSize::Default,
+            };
+
+            let running_cb = Arc::clone(&running_thread);
+            let mut noise_floor_rms = 0.01_f32;
+
+            // DSP-Pipeline aus aktuellen Settings bauen
+            let mut pipeline = dsp_config
+                .map(|dsp| build_pipeline_from_dsp_config(&dsp))
+                .unwrap_or_else(speakeasy_audio::pipeline::build_default_capture_pipeline);
+
+            let stream = match device.build_input_stream(
+                &config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    if !running_cb.load(Ordering::Relaxed) {
+                        return;
+                    }
+
+                    // Roh-RMS berechnen
+                    let sum_sq: f32 = data.iter().map(|s| s * s).sum();
+                    let rms = (sum_sq / data.len() as f32).sqrt();
+
+                    // Peak fuer Clipping (auf Rohsignal)
+                    let peak = data.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+                    let is_clipping = peak > 0.95;
+
+                    // DSP-Pipeline anwenden und "Nach DSP"-Pegel berechnen
+                    let processed = pipeline.process_frame(data);
+                    let proc_sum_sq: f32 = processed.samples.iter().map(|s| s * s).sum();
+                    let proc_rms = (proc_sum_sq / processed.samples.len().max(1) as f32).sqrt();
+
+                    // Noise Floor: exponentieller Durchschnitt (langsam, bei leisen Frames)
+                    if rms < noise_floor_rms * 3.0 && rms > 0.0001 {
+                        noise_floor_rms = noise_floor_rms * 0.98 + rms * 0.02;
+                    }
+                    let noise_floor_db = if noise_floor_rms > 0.0001 {
+                        20.0 * noise_floor_rms.log10()
+                    } else {
+                        -80.0
+                    };
+
+                    if let Ok(mut lvl) = levels_writer.lock() {
+                        lvl.input_level = rms.min(1.0);
+                        lvl.processed_level = proc_rms.min(1.0);
+                        lvl.noise_floor = noise_floor_db;
+                        lvl.is_clipping = is_clipping;
+                    }
+                },
+                move |err| {
+                    warn!("Audio-Monitor Fehler: {}", err);
+                },
+                None,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("Audio-Monitor: Stream konnte nicht erstellt werden: {}", e);
+                    return;
+                }
+            };
+
+            if let Err(e) = stream.play() {
+                warn!("Audio-Monitor: Stream konnte nicht gestartet werden: {}", e);
+                return;
+            }
+
+            info!("Audio-Monitor gestartet (mit DSP-Pipeline)");
+
+            // Thread am Leben halten bis running=false
+            while running_thread.load(Ordering::Relaxed) {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+
+            drop(stream);
+            info!("Audio-Monitor Thread beendet");
+        })
+        .map_err(|e| format!("Monitor-Thread konnte nicht gestartet werden: {}", e))?;
+
+    // Monitor im State speichern
+    let monitor = AudioMonitor::new(levels, running);
+    let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
+    audio.monitor = Some(monitor);
+
+    Ok(())
+}
+
+/// Stoppt den Audio-Monitor
+#[tauri::command]
+pub async fn stop_audio_monitor(state: State<'_, AppState>) -> Result<(), String> {
+    use std::sync::atomic::Ordering;
+
+    let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
+    if let Some(monitor) = audio.monitor.take() {
+        monitor.running.store(false, Ordering::Relaxed);
+        // Stream wird beim Drop gestoppt
+        info!("Audio-Monitor gestoppt");
+    }
+    Ok(())
+}
+
+/// Gibt aktuelle Audio-Statistiken zurueck (mit echten Pegeln wenn Monitor laeuft)
+#[tauri::command]
+pub async fn get_audio_stats(state: State<'_, AppState>) -> Result<AudioStats, String> {
+    let audio = state.audio.lock().map_err(|e| e.to_string())?;
+
+    if let Some(ref monitor) = audio.monitor {
+        let lvl = monitor.levels.lock().map_err(|e| e.to_string())?;
+        Ok(AudioStats {
+            input_level: lvl.input_level,
+            output_level: 0.0,
+            processed_level: lvl.processed_level,
+            noise_floor: lvl.noise_floor,
+            is_clipping: lvl.is_clipping,
+            latency: LatencyBreakdown {
+                device: 10.0,
+                encoding: 20.0,
+                jitter: 40.0,
+                network: 0.0,
+                total: 70.0,
+            },
+            packet_loss: 0.0,
+            rtt: 0.0,
+            bitrate: 0.0,
+        })
+    } else {
+        // Kein Monitor aktiv -> Nullwerte
+        Ok(AudioStats {
+            input_level: 0.0,
+            output_level: 0.0,
+            processed_level: 0.0,
+            noise_floor: -60.0,
+            is_clipping: false,
+            latency: LatencyBreakdown {
+                device: 0.0,
+                encoding: 0.0,
+                jitter: 0.0,
+                network: 0.0,
+                total: 0.0,
+            },
+            packet_loss: 0.0,
+            rtt: 0.0,
+            bitrate: 0.0,
+        })
+    }
 }
 
 /// Spielt einen Testton (440 Hz Sinus) ab

@@ -39,6 +39,8 @@ pub fn run() {
             commands::start_calibration,
             commands::get_audio_stats,
             commands::play_test_sound,
+            commands::start_audio_monitor,
+            commands::stop_audio_monitor,
             // Chat-Commands (Phase 4)
             commands::send_message,
             commands::get_message_history,

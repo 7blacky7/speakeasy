@@ -1,4 +1,5 @@
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use speakeasy_audio::engine::AudioEngineConfig;
 use speakeasy_plugin::manager::{ManagerKonfiguration, PluginManager};
@@ -19,6 +20,38 @@ pub struct ConnectionState {
     pub force_password_change: bool,
 }
 
+/// Echtzeit-Pegel vom Audio-Monitor (lock-free lesbar)
+#[derive(Debug, Default)]
+pub struct MonitorLevels {
+    /// RMS-Eingangspegel (0.0 - 1.0)
+    pub input_level: f32,
+    /// RMS-Pegel nach DSP (0.0 - 1.0) - aktuell gleich input_level
+    pub processed_level: f32,
+    /// Noise Floor in dBFS
+    pub noise_floor: f32,
+    /// Clipping erkannt
+    pub is_clipping: bool,
+}
+
+/// Audio-Monitor Handle (der cpal-Stream lebt in einem dedizierten Thread)
+#[derive(Debug)]
+pub struct AudioMonitor {
+    pub levels: Arc<Mutex<MonitorLevels>>,
+    pub running: Arc<AtomicBool>,
+}
+
+impl AudioMonitor {
+    pub fn new(levels: Arc<Mutex<MonitorLevels>>, running: Arc<AtomicBool>) -> Self {
+        Self { levels, running }
+    }
+}
+
+impl Drop for AudioMonitor {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+    }
+}
+
 /// Audio-Zustand
 #[derive(Debug, Default)]
 pub struct AudioState {
@@ -26,6 +59,10 @@ pub struct AudioState {
     pub deafened: bool,
     /// Aktuelle Audio-Engine-Konfiguration (gespeicherte Einstellungen)
     pub engine_config: Option<AudioEngineConfig>,
+    /// Vollstaendige Audio-Einstellungen vom Frontend (inkl. DSP, Codec, Jitter)
+    pub full_settings: Option<crate::commands::AudioSettingsConfig>,
+    /// Aktiver Audio-Monitor fuer Echtzeit-Pegel
+    pub monitor: Option<AudioMonitor>,
 }
 
 /// Globaler Anwendungszustand (Mutex-gesichert fuer Thread-Sicherheit)

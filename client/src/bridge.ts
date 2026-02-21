@@ -133,6 +133,14 @@ export async function playTestSound(): Promise<void> {
   return invoke("play_test_sound");
 }
 
+export async function startAudioMonitor(): Promise<void> {
+  return invoke("start_audio_monitor");
+}
+
+export async function stopAudioMonitor(): Promise<void> {
+  return invoke("stop_audio_monitor");
+}
+
 export interface ServerInfo {
   name: string;
   description: string;

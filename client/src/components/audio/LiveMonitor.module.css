@@ -23,9 +23,10 @@
 .levelLabel {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  width: 64px;
+  min-width: 64px;
   flex-shrink: 0;
   text-align: right;
+  white-space: nowrap;
 }
 
 .levelTrack {
@@ -64,9 +65,10 @@
   font-size: var(--font-size-xs);
   font-family: var(--font-mono);
   color: var(--color-text-muted);
-  width: 32px;
+  min-width: 36px;
   text-align: right;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .indicators {
