@@ -6,9 +6,18 @@
 # =============================================================================
 # Stage 1: Builder
 # =============================================================================
-FROM rust:1.83-bookworm AS builder
+FROM rust:1.85-bookworm AS builder
 
 WORKDIR /build
+
+# System-Abhängigkeiten für Audio (cpal/ALSA) und Protobuf (tonic-build)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libasound2-dev \
+        libopus-dev \
+        pkg-config \
+        protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
 
 # Abhängigkeiten zuerst cachen (Layer-Caching optimieren)
 # Dummy-Sources erstellen damit cargo fetch die Dependencies lädt
@@ -27,11 +36,17 @@ COPY crates/plugin/Cargo.toml crates/plugin/
 COPY crates/crypto/Cargo.toml crates/crypto/
 COPY crates/observability/Cargo.toml crates/observability/
 
+# Proto-Dateien kopieren (benoetigt fuer commander build.rs / tonic-build)
+COPY proto/ proto/
+
 # Dummy-Sourcen für alle Crates anlegen (für Dependency-Caching)
 RUN mkdir -p server/src && echo 'fn main() {}' > server/src/main.rs && \
     for crate in core protocol db auth voice signaling audio commander chat plugin crypto observability; do \
       mkdir -p crates/$crate/src && echo '' > crates/$crate/src/lib.rs; \
     done
+
+# build.rs für commander kopieren (tonic-build braucht es beim fetch/build)
+COPY crates/commander/build.rs crates/commander/build.rs
 
 RUN cargo fetch
 
