@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------------------
 
 /// Abtastrate fuer Opus
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SampleRate {
     /// 8 kHz – Schmalband (Telefon-Qualitaet)
@@ -23,38 +23,29 @@ pub enum SampleRate {
     /// 24 kHz – Superbreitband
     Hz24000 = 24000,
     /// 48 kHz – Vollband (Standard fuer Musik und hohe Qualitaet)
+    #[default]
     Hz48000 = 48000,
 }
 
-impl Default for SampleRate {
-    fn default() -> Self {
-        Self::Hz48000
-    }
-}
-
 /// Anzahl der Audio-Kanaele
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChannelCount {
     /// Mono (1 Kanal) – fuer Sprache empfohlen
+    #[default]
     Mono = 1,
     /// Stereo (2 Kanaele) – fuer Musik
     Stereo = 2,
 }
 
-impl Default for ChannelCount {
-    fn default() -> Self {
-        Self::Mono
-    }
-}
-
 /// Opus-Anwendungsmodus
 ///
 /// Beeinflusst intern den Opus-Encoder-Algorithmus.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OpusApplication {
     /// Optimiert fuer Sprachverstaendlichkeit (VOIP)
+    #[default]
     Voip,
     /// Optimiert fuer allgemeine Audio-Qualitaet (Musik)
     Audio,
@@ -62,16 +53,10 @@ pub enum OpusApplication {
     RestrictedLowdelay,
 }
 
-impl Default for OpusApplication {
-    fn default() -> Self {
-        Self::Voip
-    }
-}
-
 /// Frame-Groesse in Millisekunden
 ///
 /// Beeinflusst Latenz vs. Kompressionseffizienz.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FrameSizeMs {
     /// 2.5 ms – minimale Latenz (als Zehntelmillisekunden: 25)
@@ -81,17 +66,12 @@ pub enum FrameSizeMs {
     /// 10 ms – guter Kompromiss fuer Sprache
     Ms10 = 100,
     /// 20 ms – Standard (bester Qualitaets-/Latenz-Kompromiss)
+    #[default]
     Ms20 = 200,
     /// 40 ms – hohe Kompression, mehr Latenz
     Ms40 = 400,
     /// 60 ms – maximale Kompression
     Ms60 = 600,
-}
-
-impl Default for FrameSizeMs {
-    fn default() -> Self {
-        Self::Ms20
-    }
 }
 
 impl FrameSizeMs {

@@ -228,7 +228,7 @@ mod tests {
             let jetzt = Utc::now();
             Ok(bans.iter().filter(|b| {
                 if nur_aktive {
-                    b.expires_at.map_or(true, |e| e > jetzt)
+                    b.expires_at.is_none_or(|e| e > jetzt)
                 } else {
                     true
                 }
@@ -250,12 +250,12 @@ mod tests {
             let bans = self.bans.lock().unwrap();
             let jetzt = Utc::now();
             Ok(bans.iter().find(|b| {
-                let noch_aktiv = b.expires_at.map_or(true, |e| e > jetzt);
+                let noch_aktiv = b.expires_at.is_none_or(|e| e > jetzt);
                 if !noch_aktiv {
                     return false;
                 }
-                let user_match = user_id.map_or(false, |uid| b.user_id == Some(uid));
-                let ip_match = ip.map_or(false, |i| b.ip.as_deref() == Some(i));
+                let user_match = user_id.is_some_and(|uid| b.user_id == Some(uid));
+                let ip_match = ip.is_some_and(|i| b.ip.as_deref() == Some(i));
                 user_match || ip_match
             }).cloned())
         }
@@ -264,7 +264,7 @@ mod tests {
             let mut bans = self.bans.lock().unwrap();
             let jetzt = Utc::now();
             let vorher = bans.len();
-            bans.retain(|b| b.expires_at.map_or(true, |e| e > jetzt));
+            bans.retain(|b| b.expires_at.is_none_or(|e| e > jetzt));
             Ok((vorher - bans.len()) as u64)
         }
     }

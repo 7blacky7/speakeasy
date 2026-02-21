@@ -280,7 +280,7 @@ mod tests {
         async fn list(&self, created_by: Option<Uuid>) -> DbResult<Vec<EinladungRecord>> {
             let einladungen = self.einladungen.lock().unwrap();
             Ok(einladungen.iter().filter(|e| {
-                created_by.map_or(true, |id| e.created_by == id)
+                created_by.is_none_or(|id| e.created_by == id)
             }).cloned().collect())
         }
         async fn use_invite(&self, code: &str) -> DbResult<Option<EinladungRecord>> {
@@ -289,7 +289,7 @@ mod tests {
             match einladungen.iter_mut().find(|e| e.code == code) {
                 None => Ok(None),
                 Some(e) => {
-                    if e.expires_at.map_or(false, |a| a <= jetzt) {
+                    if e.expires_at.is_some_and(|a| a <= jetzt) {
                         return Err(DbError::EinladungUngueltig);
                     }
                     if e.max_uses > 0 && e.used_count >= e.max_uses {

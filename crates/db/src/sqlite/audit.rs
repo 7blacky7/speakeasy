@@ -121,7 +121,7 @@ impl AuditLogRepository for SqliteDb {
         }
 
         let rows = q.fetch_all(&self.pool).await?;
-        rows.iter().map(|r| row_to_audit(r)).collect()
+        rows.iter().map(row_to_audit).collect()
     }
 
     async fn count_events(&self, filter: AuditLogFilter) -> DbResult<i64> {

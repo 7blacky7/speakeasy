@@ -95,7 +95,7 @@ impl ChatMessageRepository for SqliteDb {
 
         // Chronologisch sortieren (aelteste zuerst)
         let mut records: Vec<ChatNachrichtRecord> =
-            rows.iter().map(|r| row_to_nachricht(r)).collect::<DbResult<_>>()?;
+            rows.iter().map(row_to_nachricht).collect::<DbResult<_>>()?;
         records.sort_by_key(|r| r.created_at);
         Ok(records)
     }
@@ -160,7 +160,7 @@ impl ChatMessageRepository for SqliteDb {
         .fetch_all(&self.pool)
         .await?;
 
-        rows.iter().map(|r| row_to_nachricht(r)).collect()
+        rows.iter().map(row_to_nachricht).collect()
     }
 }
 
@@ -190,9 +190,9 @@ pub(crate) fn row_to_nachricht(row: &sqlx::sqlite::SqliteRow) -> DbResult<ChatNa
 
     let created_at = parse_timestamp(row.try_get("created_at")?)?;
     let edited_at: Option<String> = row.try_get("edited_at")?;
-    let edited_at = edited_at.map(|s| parse_timestamp(s)).transpose()?;
+    let edited_at = edited_at.map(parse_timestamp).transpose()?;
     let deleted_at: Option<String> = row.try_get("deleted_at")?;
-    let deleted_at = deleted_at.map(|s| parse_timestamp(s)).transpose()?;
+    let deleted_at = deleted_at.map(parse_timestamp).transpose()?;
 
     let typ_str: String = row.try_get("message_type")?;
     let message_type = typ_str

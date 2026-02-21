@@ -55,37 +55,27 @@ impl std::str::FromStr for CryptoMode {
 // ---------------------------------------------------------------------------
 
 /// Algorithmus fuer den Schluessel-Austausch
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum KeyExchangeAlgorithm {
     /// X25519 Diffie-Hellman
+    #[default]
     X25519,
     /// P-256 Elliptic Curve Diffie-Hellman
     P256,
 }
 
-impl Default for KeyExchangeAlgorithm {
-    fn default() -> Self {
-        Self::X25519
-    }
-}
-
 /// AEAD-Verschluesselungsalgorithmus nach dem Key-Exchange
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AeadAlgorithm {
     /// AES-128-GCM
     Aes128Gcm,
     /// AES-256-GCM
+    #[default]
     Aes256Gcm,
     /// ChaCha20-Poly1305
     ChaCha20Poly1305,
-}
-
-impl Default for AeadAlgorithm {
-    fn default() -> Self {
-        Self::Aes256Gcm
-    }
 }
 
 /// DTLS-Handshake Nachricht (Client <-> Server)

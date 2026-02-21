@@ -85,11 +85,11 @@ impl PluginManifest {
         let inhalt = std::fs::read_to_string(pfad).map_err(|e| {
             PluginError::ManifestNichtGefunden(format!("{}: {}", pfad.display(), e))
         })?;
-        Self::from_str(&inhalt)
+        Self::parse(&inhalt)
     }
 
     /// Parst ein Manifest aus einem TOML-String
-    pub fn from_str(inhalt: &str) -> Result<Self> {
+    pub fn parse(inhalt: &str) -> Result<Self> {
         toml::from_str(inhalt).map_err(|e| PluginError::Manifest(e.to_string()))
     }
 
@@ -147,7 +147,7 @@ before_chat_send = true
 
     #[test]
     fn manifest_parsing_gueltig() {
-        let m = PluginManifest::from_str(GUELTIG_TOML).unwrap();
+        let m = PluginManifest::parse(GUELTIG_TOML).unwrap();
         assert_eq!(m.plugin.name, "test-plugin");
         assert_eq!(m.plugin.version, "1.0.0");
         assert!(m.capabilities.chat_read);
@@ -159,7 +159,7 @@ before_chat_send = true
 
     #[test]
     fn manifest_validierung_ok() {
-        let m = PluginManifest::from_str(GUELTIG_TOML).unwrap();
+        let m = PluginManifest::parse(GUELTIG_TOML).unwrap();
         assert!(m.validieren().is_ok());
     }
 
@@ -176,7 +176,7 @@ wasm_file = "plugin.wasm"
 
 [capabilities]
 "#;
-        let m = PluginManifest::from_str(toml).unwrap();
+        let m = PluginManifest::parse(toml).unwrap();
         let err = m.validieren().unwrap_err();
         assert!(err.to_string().contains("plugin.name"));
     }
@@ -194,20 +194,20 @@ wasm_file = "plugin.wasm"
 
 [capabilities]
 "#;
-        let m = PluginManifest::from_str(toml).unwrap();
+        let m = PluginManifest::parse(toml).unwrap();
         let err = m.validieren().unwrap_err();
         assert!(matches!(err, PluginError::UngueltigeVersion(_)));
     }
 
     #[test]
     fn manifest_parsing_ungueltig() {
-        let err = PluginManifest::from_str("das ist kein toml :::").unwrap_err();
+        let err = PluginManifest::parse("das ist kein toml :::").unwrap_err();
         assert!(matches!(err, PluginError::Manifest(_)));
     }
 
     #[test]
     fn manifest_defaults() {
-        let m = PluginManifest::from_str(GUELTIG_TOML).unwrap();
+        let m = PluginManifest::parse(GUELTIG_TOML).unwrap();
         // Nicht gesetzte Capabilities sind false
         assert!(!m.capabilities.filesystem);
         assert!(!m.capabilities.audio_read);

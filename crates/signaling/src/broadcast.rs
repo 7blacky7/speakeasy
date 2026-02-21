@@ -252,7 +252,7 @@ impl Default for EventBroadcaster {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use speakeasy_protocol::control::ControlPayload;
+    
 
     fn test_nachricht(id: u32) -> ControlMessage {
         ControlMessage::ping(id, 12345)

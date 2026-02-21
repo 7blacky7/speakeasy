@@ -68,7 +68,7 @@ impl BanRepository for SqliteDb {
         };
 
         let rows = sqlx::query(sql).fetch_all(&self.pool).await?;
-        rows.iter().map(|r| row_to_ban(r)).collect()
+        rows.iter().map(row_to_ban).collect()
     }
 
     async fn remove(&self, id: Uuid) -> DbResult<bool> {

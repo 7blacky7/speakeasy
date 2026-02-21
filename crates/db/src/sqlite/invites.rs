@@ -105,7 +105,7 @@ impl InviteRepository for SqliteDb {
             .await?
         };
 
-        rows.iter().map(|r| row_to_invite(r)).collect()
+        rows.iter().map(row_to_invite).collect()
     }
 
     async fn use_invite(&self, code: &str) -> DbResult<Option<EinladungRecord>> {

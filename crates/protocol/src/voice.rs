@@ -282,18 +282,13 @@ use serde::{Deserialize, Serialize};
 use speakeasy_core::types::{ChannelId, UserId};
 
 /// Codec fuer Audio-Pakete (Signaling-Ebene)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AudioCodec {
     /// Opus – Standard-Codec fuer Sprache
+    #[default]
     Opus,
     /// PCMU (G.711) – Fallback fuer maximale Kompatibilitaet
     Pcmu,
-}
-
-impl Default for AudioCodec {
-    fn default() -> Self {
-        Self::Opus
-    }
 }
 
 /// High-Level Voice-Paket fuer Signaling (serde-kompatibel)

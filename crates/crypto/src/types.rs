@@ -101,20 +101,21 @@ impl SecretBytes {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 /// Algorithmus fuer Gruppen-Schluessel
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum GroupKeyAlgorithm {
+    #[default]
     Aes256Gcm,
     ChaCha20Poly1305,
 }
 
-impl Default for GroupKeyAlgorithm {
-    fn default() -> Self {
-        Self::Aes256Gcm
-    }
-}
 
 /// Verschluesselter Payload (Nonce + Ciphertext + Auth-Tag)
 #[derive(Debug, Clone)]

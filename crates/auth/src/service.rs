@@ -50,7 +50,7 @@ impl<U: UserRepository> AuthService<U> {
         passwort: &str,
     ) -> AuthResult<BenutzerRecord> {
         // Pruefen ob Username bereits vergeben
-        if let Some(_) = self.user_repo.get_by_name(username).await? {
+        if self.user_repo.get_by_name(username).await?.is_some() {
             return Err(AuthError::BenutzernameVergeben(username.to_string()));
         }
 

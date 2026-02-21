@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments, clippy::result_large_err)]
 //! speakeasy-commander – Commander-Interface fuer den Speakeasy Server
 //!
 //! Implementiert drei Zugangsarten zum Server:

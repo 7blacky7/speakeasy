@@ -19,21 +19,12 @@ use crate::trust::trust_level_bestimmen;
 use crate::types::{Plugin, PluginId, PluginInfo, PluginState, TrustLevel};
 
 /// Konfiguration fuer den PluginManager
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ManagerKonfiguration {
     /// Signierte Plugins sind Pflicht (unsignierte werden abgelehnt)
     pub signierung_erforderlich: bool,
     /// Verzeichnis in dem Plugins gesucht werden
     pub plugin_verzeichnis: Option<std::path::PathBuf>,
-}
-
-impl Default for ManagerKonfiguration {
-    fn default() -> Self {
-        Self {
-            signierung_erforderlich: false,
-            plugin_verzeichnis: None,
-        }
-    }
 }
 
 /// Interner Zustand eines geladenen Plugins

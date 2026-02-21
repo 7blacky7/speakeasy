@@ -73,7 +73,7 @@ impl FileRepository for SqliteDb {
         .fetch_all(&self.pool)
         .await?;
 
-        rows.iter().map(|r| row_to_datei(r)).collect()
+        rows.iter().map(row_to_datei).collect()
     }
 
     async fn soft_delete(&self, id: Uuid) -> DbResult<bool> {

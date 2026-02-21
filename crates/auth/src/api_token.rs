@@ -186,7 +186,7 @@ impl ApiTokenStore {
         let mut tokens = self.tokens.write().await;
         let vorher = tokens.len();
         tokens.retain(|t| {
-            t.widerrufen || t.laeuft_ab_am.map_or(true, |ablauf| ablauf > jetzt)
+            t.widerrufen || t.laeuft_ab_am.is_none_or(|ablauf| ablauf > jetzt)
         });
         vorher - tokens.len()
     }

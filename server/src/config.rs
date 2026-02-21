@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 /// Vollstaendige Server-Konfiguration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct ServerConfig {
     /// Allgemeine Server-Einstellungen
     pub server: ServerEinstellungen,
@@ -22,17 +23,6 @@ pub struct ServerConfig {
     pub logging: LoggingEinstellungen,
 }
 
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self {
-            server: ServerEinstellungen::default(),
-            netzwerk: NetzwerkEinstellungen::default(),
-            datenbank: DatenbankEinstellungen::default(),
-            audio: AudioEinstellungen::default(),
-            logging: LoggingEinstellungen::default(),
-        }
-    }
-}
 
 /// Allgemeine Server-Einstellungen
 #[derive(Debug, Clone, Serialize, Deserialize)]

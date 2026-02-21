@@ -322,7 +322,7 @@ mod tests {
         // Frame-Laenge von 200 Bytes im Buffer simulieren
         let mut buf = BytesMut::new();
         buf.put_u32(200); // 200 Bytes Payload
-        buf.put_slice(&vec![b'x'; 200]);
+        buf.put_slice(&[b'x'; 200]);
 
         let result = codec.decode(&mut buf);
         assert!(result.is_err());

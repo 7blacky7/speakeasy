@@ -36,7 +36,7 @@ impl PermissionRepository for SqliteDb {
         .fetch_all(&self.pool)
         .await?;
 
-        rows.iter().map(|r| row_to_permission(r)).collect()
+        rows.iter().map(row_to_permission).collect()
     }
 
     async fn set_permission(
@@ -245,9 +245,11 @@ fn row_to_permission(
     Ok((key, wert))
 }
 
+type WertSpalten = (&'static str, Option<i64>, Option<i64>, Option<String>);
+
 fn wert_zu_spalten(
     wert: &BerechtigungsWert,
-) -> DbResult<(&'static str, Option<i64>, Option<i64>, Option<String>)> {
+) -> DbResult<WertSpalten> {
     match wert {
         BerechtigungsWert::TriState(ts) => {
             Ok(("tri_state", ts.to_opt_int(), None, None))
