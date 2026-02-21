@@ -1,0 +1,42 @@
+[package]
+name = "speakeasy-auth"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Auth- und Permission-Service fuer Speakeasy"
+
+[dependencies]
+speakeasy-core = { path = "../core" }
+speakeasy-db = { path = "../db" }
+
+# Passwort-Hashing
+argon2 = { version = "0.5", features = ["password-hash"] }
+
+# Zufallswerte
+rand = "0.8"
+
+# Base64 fuer Token-Encoding
+base64 = "0.22"
+
+# Serialisierung
+serde.workspace = true
+serde_json.workspace = true
+
+# Fehlerbehandlung
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Typen
+uuid.workspace = true
+chrono.workspace = true
+
+# Async
+tokio.workspace = true
+
+# Logging
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
