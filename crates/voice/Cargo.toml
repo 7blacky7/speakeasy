@@ -1,0 +1,21 @@
+[package]
+name = "speakeasy-voice"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Voice-Forwarding-Engine fuer Speakeasy (Media Router, Jitter Buffer, PLC, Congestion Control)"
+
+[dependencies]
+speakeasy-core = { path = "../core" }
+speakeasy-protocol = { path = "../protocol" }
+
+tokio = { workspace = true, features = ["net", "sync", "time", "rt", "macros"] }
+dashmap = "6"
+tracing = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = "0.12"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
