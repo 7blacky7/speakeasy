@@ -42,6 +42,17 @@ pub enum PresenceEvent {
         is_input_muted: bool,
         is_output_muted: bool,
     },
+    /// Nickname-Aenderung
+    NicknameGeaendert {
+        user_id: UserId,
+        nickname: String,
+    },
+    /// Away-Status geaendert
+    AwayGeaendert {
+        user_id: UserId,
+        away: bool,
+        message: Option<String>,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +68,8 @@ pub struct ClientPresence {
     pub channel_id: Option<ChannelId>,
     pub is_input_muted: bool,
     pub is_output_muted: bool,
+    pub is_away: bool,
+    pub away_message: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +265,29 @@ impl PresenceManager {
         self.inner.clients.get(user_id)?.channel_id
     }
 
+    /// Aktualisiert den Anzeigenamen eines Clients
+    pub fn nickname_aktualisieren(&self, user_id: UserId, nickname: String) {
+        if let Some(mut entry) = self.inner.clients.get_mut(&user_id) {
+            entry.display_name = nickname.clone();
+        }
+        let _ = self
+            .inner
+            .event_tx
+            .send(PresenceEvent::NicknameGeaendert { user_id, nickname });
+    }
+
+    /// Setzt den Away-Status eines Clients
+    pub fn away_setzen(&self, user_id: UserId, away: bool, message: Option<String>) {
+        if let Some(mut entry) = self.inner.clients.get_mut(&user_id) {
+            entry.is_away = away;
+            entry.away_message = message.clone();
+        }
+        let _ = self
+            .inner
+            .event_tx
+            .send(PresenceEvent::AwayGeaendert { user_id, away, message });
+    }
+
     /// Gibt alle User-IDs in einem Channel zurueck
     pub fn user_ids_in_channel(&self, channel_id: &ChannelId) -> Vec<UserId> {
         self.inner
@@ -304,6 +340,8 @@ mod tests {
             channel_id: None,
             is_input_muted: false,
             is_output_muted: false,
+            is_away: false,
+            away_message: None,
         }
     }
 

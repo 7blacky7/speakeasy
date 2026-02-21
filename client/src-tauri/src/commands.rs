@@ -6,6 +6,7 @@ use speakeasy_core::types::ChannelId;
 use speakeasy_protocol::control::{
     ChannelCreateRequest, ChannelDeleteRequest, ChannelEditRequest, ChatDeleteRequest,
     ChatEditRequest, ChatHistoryRequest, ChatSendRequest, ControlPayload, FileUploadRequest,
+    NicknameChangeRequest, PasswordChangeRequest, SetAwayRequest,
 };
 
 use crate::connection::ServerConnection;
@@ -1133,6 +1134,119 @@ pub async fn list_files(
                 })
                 .collect();
             Ok(dateien)
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
+}
+
+// --- Account-Management Commands (Phase 8.4) ---
+
+/// Aendert das Passwort des angemeldeten Benutzers
+#[tauri::command]
+pub async fn change_password(
+    state: State<'_, AppState>,
+    old_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    debug!("Passwort-Aenderung angefordert");
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::PasswordChange(PasswordChangeRequest {
+            old_password,
+            new_password,
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::PasswordChangeResponse(resp) => {
+            if resp.success {
+                info!("Passwort erfolgreich geaendert");
+                Ok(())
+            } else {
+                Err("Passwort-Aenderung fehlgeschlagen".to_string())
+            }
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
+}
+
+/// Aendert den Anzeigenamen (Nickname) des angemeldeten Benutzers
+#[tauri::command]
+pub async fn change_nickname(
+    state: State<'_, AppState>,
+    new_nickname: String,
+) -> Result<String, String> {
+    debug!("Nickname-Aenderung zu '{}'", new_nickname);
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::NicknameChange(NicknameChangeRequest { new_nickname }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::NicknameChangeResponse(resp) => {
+            info!("Nickname erfolgreich geaendert: '{}'", resp.nickname);
+            Ok(resp.nickname)
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
+}
+
+/// Setzt den Away-Status des angemeldeten Benutzers
+#[tauri::command]
+pub async fn set_away(
+    state: State<'_, AppState>,
+    away: bool,
+    message: Option<String>,
+) -> Result<(), String> {
+    debug!("Away-Status: away={}, message={:?}", away, message);
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::SetAway(SetAwayRequest { away, message }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::SetAwayResponse(_) => {
+            info!("Away-Status gesetzt: {}", away);
+            Ok(())
         }
         ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
         other => Err(format!(

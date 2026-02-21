@@ -83,6 +83,48 @@ pub struct LogoutResponse {
     pub success: bool,
 }
 
+/// Passwort-Aenderungs-Anfrage
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PasswordChangeRequest {
+    /// Aktuelles Passwort zur Verifikation
+    pub old_password: String,
+    /// Neues Passwort (Klartext)
+    pub new_password: String,
+}
+
+/// Passwort-Aenderungs-Antwort
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PasswordChangeResponse {
+    pub success: bool,
+}
+
+/// Nickname-Aenderungs-Anfrage
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NicknameChangeRequest {
+    /// Neuer Anzeigename
+    pub new_nickname: String,
+}
+
+/// Nickname-Aenderungs-Antwort
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NicknameChangeResponse {
+    /// Tatsaechlich gesetzter Nickname (kann vom Server leicht angepasst sein)
+    pub nickname: String,
+}
+
+/// Away-Status setzen
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetAwayRequest {
+    pub away: bool,
+    pub message: Option<String>,
+}
+
+/// Away-Status Antwort
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetAwayResponse {
+    pub away: bool,
+}
+
 // ---------------------------------------------------------------------------
 // Channel-Nachrichten
 // ---------------------------------------------------------------------------
@@ -510,6 +552,12 @@ pub enum ControlPayload {
     LoginResponse(LoginResponse),
     Logout(LogoutRequest),
     LogoutResponse(LogoutResponse),
+    PasswordChange(PasswordChangeRequest),
+    PasswordChangeResponse(PasswordChangeResponse),
+    NicknameChange(NicknameChangeRequest),
+    NicknameChangeResponse(NicknameChangeResponse),
+    SetAway(SetAwayRequest),
+    SetAwayResponse(SetAwayResponse),
 
     // Channel
     ChannelList,

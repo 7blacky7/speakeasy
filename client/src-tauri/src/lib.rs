@@ -53,6 +53,10 @@ pub fn run() {
             commands::disable_plugin,
             commands::unload_plugin,
             commands::install_plugin,
+            // Account-Management Commands (Phase 8.4)
+            commands::change_password,
+            commands::change_nickname,
+            commands::set_away,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

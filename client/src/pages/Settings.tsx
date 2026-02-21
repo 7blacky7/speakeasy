@@ -4,9 +4,13 @@ import styles from "./Settings.module.css";
 const SETTINGS_SECTIONS = [
   {
     path: "/settings/audio",
-    icon: "🎙️",
-    title: "Audio",
-    description: "Mikrofon, Lautsprecher und Rauschunterdrückung konfigurieren",
+    label: "Audio",
+    description: "Mikrofon, Lautsprecher und Rauschunterdrueckung konfigurieren",
+  },
+  {
+    path: "/settings/account",
+    label: "Account",
+    description: "Passwort, Nickname und Away-Status verwalten",
   },
 ];
 
@@ -17,9 +21,8 @@ export default function Settings() {
       <div class={styles.sections}>
         {SETTINGS_SECTIONS.map((section) => (
           <A href={section.path} class={styles.sectionCard}>
-            <span class={styles.sectionIcon}>{section.icon}</span>
             <div class={styles.sectionInfo}>
-              <span class={styles.sectionTitle}>{section.title}</span>
+              <span class={styles.sectionTitle}>{section.label}</span>
               <span class={styles.sectionDesc}>{section.description}</span>
             </div>
             <span class={styles.arrow}>›</span>

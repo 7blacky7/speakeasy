@@ -8,11 +8,15 @@ use crate::error::SignalingResult;
 use crate::server_state::SignalingState;
 use speakeasy_core::types::{ChannelId, UserId};
 use speakeasy_db::{
-    repository::UserRepository, BanRepository, ChannelRepository, ChatMessageRepository,
-    PermissionRepository, ServerGroupRepository,
+    models::BenutzerUpdate,
+    repository::UserRepository,
+    BanRepository, ChannelRepository, ChatMessageRepository, PermissionRepository,
+    ServerGroupRepository,
 };
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, LoginRequest, LoginResponse, LogoutResponse,
+    NicknameChangeRequest, NicknameChangeResponse, PasswordChangeRequest, PasswordChangeResponse,
+    SetAwayRequest, SetAwayResponse,
 };
 use std::sync::Arc;
 
@@ -218,6 +222,127 @@ where
             )
         }
     }
+}
+
+/// Verarbeitet eine Passwort-Aenderungs-Anfrage
+pub async fn handle_password_change<U, P, B>(
+    request: PasswordChangeRequest,
+    request_id: u32,
+    user_id: UserId,
+    state: &Arc<SignalingState<U, P, B>>,
+) -> ControlMessage
+where
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
+    P: PermissionRepository + 'static,
+    B: BanRepository + 'static,
+{
+    match state
+        .auth_service
+        .passwort_aendern(user_id.inner(), &request.old_password, &request.new_password)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(user_id = %user_id, "Passwort erfolgreich geaendert");
+            ControlMessage::new(
+                request_id,
+                ControlPayload::PasswordChangeResponse(PasswordChangeResponse { success: true }),
+            )
+        }
+        Err(speakeasy_auth::AuthError::UngueltigeAnmeldedaten) => {
+            tracing::warn!(user_id = %user_id, "Passwort-Aenderung: falsches altes Passwort");
+            ControlMessage::error(
+                request_id,
+                ErrorCode::InvalidCredentials,
+                "Altes Passwort ist falsch",
+            )
+        }
+        Err(e) => {
+            tracing::error!(user_id = %user_id, fehler = %e, "Passwort-Aenderung fehlgeschlagen");
+            ControlMessage::error(request_id, ErrorCode::InternalError, "Interner Fehler")
+        }
+    }
+}
+
+/// Verarbeitet eine Nickname-Aenderungs-Anfrage
+pub async fn handle_nickname_change<U, P, B>(
+    request: NicknameChangeRequest,
+    request_id: u32,
+    user_id: UserId,
+    state: &Arc<SignalingState<U, P, B>>,
+) -> ControlMessage
+where
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
+    P: PermissionRepository + 'static,
+    B: BanRepository + 'static,
+{
+    let nickname = request.new_nickname.trim().to_string();
+
+    if nickname.is_empty() || nickname.len() > 64 {
+        return ControlMessage::error(
+            request_id,
+            ErrorCode::InvalidRequest,
+            "Nickname muss 1-64 Zeichen lang sein",
+        );
+    }
+
+    // Username in der DB aktualisieren
+    match UserRepository::update(
+        state.db.as_ref(),
+        user_id.inner(),
+        BenutzerUpdate {
+            username: Some(nickname.clone()),
+            ..Default::default()
+        },
+    )
+    .await
+    {
+        Ok(_) => {
+            // Presence-Anzeigename aktualisieren und Broadcast
+            state.presence.nickname_aktualisieren(user_id, nickname.clone());
+
+            tracing::info!(
+                user_id = %user_id,
+                nickname = %nickname,
+                "Nickname erfolgreich geaendert"
+            );
+            ControlMessage::new(
+                request_id,
+                ControlPayload::NicknameChangeResponse(NicknameChangeResponse { nickname }),
+            )
+        }
+        Err(e) => {
+            tracing::error!(user_id = %user_id, fehler = %e, "Nickname-Aenderung fehlgeschlagen");
+            ControlMessage::error(request_id, ErrorCode::InternalError, "Interner Fehler")
+        }
+    }
+}
+
+/// Verarbeitet eine Away-Status-Aenderung
+pub async fn handle_set_away<U, P, B>(
+    request: SetAwayRequest,
+    request_id: u32,
+    user_id: UserId,
+    state: &Arc<SignalingState<U, P, B>>,
+) -> ControlMessage
+where
+    U: UserRepository + ServerGroupRepository + ChannelRepository + ChatMessageRepository + 'static,
+    P: PermissionRepository + 'static,
+    B: BanRepository + 'static,
+{
+    state
+        .presence
+        .away_setzen(user_id, request.away, request.message);
+
+    tracing::debug!(
+        user_id = %user_id,
+        away = request.away,
+        "Away-Status aktualisiert"
+    );
+
+    ControlMessage::new(
+        request_id,
+        ControlPayload::SetAwayResponse(SetAwayResponse { away: request.away }),
+    )
 }
 
 /// Validiert einen Session-Token und gibt die UserId zurueck

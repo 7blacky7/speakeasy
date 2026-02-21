@@ -205,6 +205,21 @@ where
             ),
 
             // -------------------------------------------------------------------
+            // Account-Management
+            // -------------------------------------------------------------------
+            ControlPayload::PasswordChange(req) => Some(
+                auth_handler::handle_password_change(req, request_id, user_id, &self.state).await,
+            ),
+
+            ControlPayload::NicknameChange(req) => Some(
+                auth_handler::handle_nickname_change(req, request_id, user_id, &self.state).await,
+            ),
+
+            ControlPayload::SetAway(req) => Some(
+                auth_handler::handle_set_away(req, request_id, user_id, &self.state).await,
+            ),
+
+            // -------------------------------------------------------------------
             // Client-Nachrichten
             // -------------------------------------------------------------------
             ControlPayload::ClientList => {
@@ -318,6 +333,9 @@ where
             // -------------------------------------------------------------------
             ControlPayload::LoginResponse(_)
             | ControlPayload::LogoutResponse(_)
+            | ControlPayload::PasswordChangeResponse(_)
+            | ControlPayload::NicknameChangeResponse(_)
+            | ControlPayload::SetAwayResponse(_)
             | ControlPayload::ChannelListResponse(_)
             | ControlPayload::ChannelJoinResponse(_)
             | ControlPayload::ChannelCreateResponse(_)

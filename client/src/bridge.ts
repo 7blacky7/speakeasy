@@ -383,3 +383,23 @@ export async function unloadPlugin(id: string): Promise<void> {
 export async function installPlugin(path: string): Promise<PluginInstallResult> {
   return invoke("install_plugin", { path });
 }
+
+// --- Account-Management IPC Commands (Phase 8.4) ---
+
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string
+): Promise<void> {
+  return invoke("change_password", { oldPassword, newPassword });
+}
+
+export async function changeNickname(newNickname: string): Promise<string> {
+  return invoke("change_nickname", { newNickname });
+}
+
+export async function setAway(
+  away: boolean,
+  message?: string
+): Promise<void> {
+  return invoke("set_away", { away, message: message ?? null });
+}
