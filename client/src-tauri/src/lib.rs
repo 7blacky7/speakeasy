@@ -1,6 +1,7 @@
 mod commands;
 mod connection;
 mod state;
+mod voice;
 
 use tauri::Manager;
 use tracing::info;

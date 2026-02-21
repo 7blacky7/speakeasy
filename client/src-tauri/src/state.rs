@@ -5,6 +5,7 @@ use speakeasy_plugin::manager::{ManagerKonfiguration, PluginManager};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::connection::ServerConnection;
+use crate::voice::VoiceClient;
 
 /// Verbindungszustand des Clients (leichtgewichtige Metadaten)
 #[derive(Debug, Default)]
@@ -33,6 +34,8 @@ pub struct AppState {
     pub tcp: AsyncMutex<Option<ServerConnection>>,
     pub audio: Mutex<AudioState>,
     pub plugin_manager: Mutex<Option<PluginManager>>,
+    /// Voice-Client (async Mutex, da start/stop async sind)
+    pub voice: AsyncMutex<Option<VoiceClient>>,
 }
 
 impl Default for AppState {
@@ -42,6 +45,7 @@ impl Default for AppState {
             tcp: AsyncMutex::new(None),
             audio: Mutex::new(AudioState::default()),
             plugin_manager: Mutex::new(None),
+            voice: AsyncMutex::new(None),
         }
     }
 }
@@ -55,6 +59,7 @@ impl AppState {
             tcp: AsyncMutex::new(None),
             audio: Mutex::new(AudioState::default()),
             plugin_manager: Mutex::new(Some(manager)),
+            voice: AsyncMutex::new(None),
         }
     }
 }

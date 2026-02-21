@@ -4341,6 +4341,7 @@ dependencies = [
  "anyhow",
  "cpal",
  "futures-util",
+ "ringbuf",
  "serde",
  "serde_json",
  "speakeasy-audio",

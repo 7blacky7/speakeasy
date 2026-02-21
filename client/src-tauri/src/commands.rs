@@ -109,15 +109,28 @@ pub async fn connect_to_server(
     Ok(())
 }
 
-/// Trennt die Verbindung zum Server
+/// Trennt die Verbindung zum Server und stoppt die Voice-Pipeline
 #[tauri::command]
 pub async fn disconnect(state: State<'_, AppState>) -> Result<(), String> {
     info!("Verbindung wird getrennt");
 
-    // Logout und TCP-Verbindung trennen
+    // 1. Voice-Pipeline stoppen
+    {
+        let mut voice = state.voice.lock().await;
+        if let Some(ref mut client) = *voice {
+            client.stop().await;
+        }
+        *voice = None;
+    }
+
+    // 2. Logout und TCP-Verbindung trennen
     {
         let mut tcp = state.tcp.lock().await;
         if let Some(ref mut conn) = *tcp {
+            // Voice-Disconnect versuchen
+            if let Err(e) = conn.voice_disconnect(Some("Verbindung getrennt".to_string())).await {
+                warn!("Voice-Disconnect-Fehler (wird ignoriert): {}", e);
+            }
             // Logout versuchen, Fehler ignorieren (Verbindung wird trotzdem getrennt)
             if let Err(e) = conn.logout().await {
                 warn!("Logout-Fehler (wird ignoriert): {}", e);
@@ -127,7 +140,7 @@ pub async fn disconnect(state: State<'_, AppState>) -> Result<(), String> {
         *tcp = None;
     }
 
-    // Metadaten zuruecksetzen
+    // 3. Metadaten zuruecksetzen
     {
         let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
         conn.connected = false;
@@ -139,7 +152,7 @@ pub async fn disconnect(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// Tritt einem Kanal bei
+/// Tritt einem Kanal bei und startet die Voice-Pipeline
 #[tauri::command]
 pub async fn join_channel(
     state: State<'_, AppState>,
@@ -147,22 +160,65 @@ pub async fn join_channel(
 ) -> Result<(), String> {
     debug!("Trete Kanal {} bei", channel_id);
 
+    let server_address: String;
     {
         let conn = state.connection.lock().map_err(|e| e.to_string())?;
         if !conn.connected {
             return Err("Nicht mit einem Server verbunden".to_string());
         }
+        server_address = conn
+            .server_address
+            .clone()
+            .ok_or_else(|| "Keine Server-Adresse bekannt".to_string())?;
     }
 
-    // Kanal-Beitritt ueber TCP-Verbindung
-    {
+    // 1. Kanal-Beitritt ueber TCP-Verbindung
+    // 2. Voice-Init: UDP Port Negotiation
+    let voice_ready = {
         let mut tcp = state.tcp.lock().await;
         let conn = tcp
             .as_mut()
             .ok_or_else(|| "Keine TCP-Verbindung vorhanden".to_string())?;
+
         conn.join_channel(&channel_id)
             .await
             .map_err(|e| format!("Kanal-Beitritt fehlgeschlagen: {}", e))?;
+
+        // Voice-Init senden (Port 0 = wird nach Socket-Bind aktualisiert)
+        // Wir senden erstmal Port 0, der Server kennt unsere IP aus der TCP-Verbindung
+        conn.voice_init(0)
+            .await
+            .map_err(|e| format!("Voice-Init fehlgeschlagen: {}", e))?
+    };
+
+    // 3. Voice-Pipeline starten
+    {
+        let server_ip = if voice_ready.server_ip.is_empty() {
+            server_address.clone()
+        } else {
+            voice_ready.server_ip.clone()
+        };
+
+        let server_udp_addr: std::net::SocketAddr = format!(
+            "{}:{}",
+            server_ip, voice_ready.server_udp_port
+        )
+        .parse()
+        .map_err(|e| format!("Ungueltige Server-UDP-Adresse: {}", e))?;
+
+        let mut voice = state.voice.lock().await;
+        // Alte Voice-Verbindung stoppen falls vorhanden
+        if let Some(ref mut client) = *voice {
+            client.stop().await;
+        }
+
+        let mut client = crate::voice::VoiceClient::new();
+        client
+            .start(server_udp_addr, voice_ready.ssrc)
+            .await
+            .map_err(|e| format!("Voice-Pipeline konnte nicht gestartet werden: {}", e))?;
+
+        *voice = Some(client);
     }
 
     // Metadaten aktualisieren
@@ -174,17 +230,36 @@ pub async fn join_channel(
     Ok(())
 }
 
-/// Verlaesst den aktuellen Kanal
+/// Verlaesst den aktuellen Kanal und stoppt die Voice-Pipeline
 #[tauri::command]
 pub async fn leave_channel(state: State<'_, AppState>) -> Result<(), String> {
     debug!("Verlasse aktuellen Kanal");
+
+    // 1. Voice-Pipeline stoppen
+    {
+        let mut voice = state.voice.lock().await;
+        if let Some(ref mut client) = *voice {
+            client.stop().await;
+        }
+        *voice = None;
+    }
+
+    // 2. Voice-Disconnect an Server senden
+    {
+        let mut tcp = state.tcp.lock().await;
+        if let Some(ref mut conn) = *tcp {
+            if let Err(e) = conn.voice_disconnect(Some("Kanal verlassen".to_string())).await {
+                warn!("Voice-Disconnect fehlgeschlagen: {} (wird ignoriert)", e);
+            }
+        }
+    }
 
     let channel_id = {
         let conn = state.connection.lock().map_err(|e| e.to_string())?;
         conn.current_channel.clone()
     };
 
-    // Kanal-Verlassen ueber TCP-Verbindung
+    // 3. Kanal-Verlassen ueber TCP-Verbindung
     if let Some(ref cid) = channel_id {
         let mut tcp = state.tcp.lock().await;
         if let Some(ref mut conn) = *tcp {
@@ -194,7 +269,7 @@ pub async fn leave_channel(state: State<'_, AppState>) -> Result<(), String> {
         }
     }
 
-    // Metadaten aktualisieren
+    // 4. Metadaten aktualisieren
     {
         let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
         conn.current_channel = None;
@@ -272,24 +347,45 @@ pub async fn set_audio_config(config: AudioConfig) -> Result<(), String> {
 /// Schaltet das Mikrofon stumm/wieder ein
 #[tauri::command]
 pub async fn toggle_mute(state: State<'_, AppState>) -> Result<bool, String> {
-    let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
-    audio.muted = !audio.muted;
-    let muted = audio.muted;
-    info!("Mikrofon: {}", if muted { "stumm" } else { "aktiv" });
+    // MutexGuard MUSS vor dem .await gedroppt werden (Send-Requirement)
+    let muted = {
+        let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
+        audio.muted = !audio.muted;
+        let muted = audio.muted;
+        info!("Mikrofon: {}", if muted { "stumm" } else { "aktiv" });
+        muted
+    };
 
-    // TODO Phase 3: Audio-Engine informieren
+    // Voice-Client informieren
+    let voice = state.voice.lock().await;
+    if let Some(ref client) = *voice {
+        client.set_muted(muted);
+    }
+
     Ok(muted)
 }
 
 /// Schaltet den Ton aus/ein (deaf)
 #[tauri::command]
 pub async fn toggle_deafen(state: State<'_, AppState>) -> Result<bool, String> {
-    let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
-    audio.deafened = !audio.deafened;
-    let deafened = audio.deafened;
-    info!("Ton: {}", if deafened { "aus" } else { "ein" });
+    // MutexGuard MUSS vor dem .await gedroppt werden (Send-Requirement)
+    let deafened = {
+        let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
+        audio.deafened = !audio.deafened;
+        let deafened = audio.deafened;
+        if deafened {
+            audio.muted = true;
+        }
+        info!("Ton: {}", if deafened { "aus" } else { "ein" });
+        deafened
+    };
 
-    // TODO Phase 3: Audio-Engine informieren
+    // Voice-Client informieren
+    let voice = state.voice.lock().await;
+    if let Some(ref client) = *voice {
+        client.set_deafened(deafened);
+    }
+
     Ok(deafened)
 }
 

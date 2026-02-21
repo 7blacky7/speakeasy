@@ -8,6 +8,7 @@ use speakeasy_protocol::{
     control::{
         ChannelJoinRequest, ChannelLeaveRequest, ControlMessage, ControlPayload, ErrorCode,
         ErrorResponse, LoginRequest, LoginResponse, LogoutRequest, ServerInfoResponse,
+        VoiceDisconnectRequest, VoiceInitRequest, VoiceReadyResponse,
     },
     wire::FrameCodec,
 };
@@ -298,6 +299,57 @@ impl ServerConnection {
                 std::mem::discriminant(&other)
             ))),
         }
+    }
+
+    /// Voice-Init: UDP Port Negotiation mit dem Server
+    ///
+    /// Sendet den lokalen UDP-Port und empfaengt Server-UDP-Adresse + SSRC.
+    pub async fn voice_init(
+        &mut self,
+        client_udp_port: u16,
+    ) -> Result<VoiceReadyResponse, ConnectionError> {
+        let request_id = self.next_id();
+        let msg = ControlMessage::new(
+            request_id,
+            ControlPayload::VoiceInit(VoiceInitRequest {
+                client_udp_port,
+                preferred_codec: "opus".to_string(),
+                dtls_fingerprint: None,
+            }),
+        );
+
+        let response = self.send_and_receive(msg).await?;
+        Self::check_error(&response)?;
+
+        match response.payload {
+            ControlPayload::VoiceReady(ready) => {
+                tracing::info!(
+                    server_udp = %ready.server_udp_port,
+                    ssrc = ready.ssrc,
+                    codec = %ready.codec,
+                    "Voice-Init erfolgreich"
+                );
+                Ok(ready)
+            }
+            other => Err(ConnectionError::UnexpectedResponse(format!(
+                "Erwartet VoiceReady, erhalten: {:?}",
+                std::mem::discriminant(&other)
+            ))),
+        }
+    }
+
+    /// Voice-Disconnect: Trennt die Voice-Verbindung
+    pub async fn voice_disconnect(&mut self, reason: Option<String>) -> Result<(), ConnectionError> {
+        let request_id = self.next_id();
+        let msg = ControlMessage::new(
+            request_id,
+            ControlPayload::VoiceDisconnect(VoiceDisconnectRequest { reason }),
+        );
+
+        let response = self.send_and_receive(msg).await?;
+        Self::check_error(&response)?;
+        tracing::info!("Voice-Disconnect erfolgreich");
+        Ok(())
     }
 
     /// Session-Token zurueckgeben
