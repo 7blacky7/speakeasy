@@ -10,9 +10,26 @@ description = "Datenbank-Abstraktion fuer Speakeasy (SQLite / PostgreSQL)"
 [dependencies]
 speakeasy-core = { path = "../core" }
 
+# Datenbank
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "migrate", "uuid", "chrono", "json"] }
+
+# Serialisierung
 serde.workspace = true
+serde_json.workspace = true
+
+# Fehlerbehandlung
 thiserror.workspace = true
 anyhow.workspace = true
+
+# Typen
 uuid.workspace = true
 chrono.workspace = true
+
+# Async
 tokio.workspace = true
+
+# Logging
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
