@@ -1,0 +1,47 @@
+# Build artifacts
+target/
+dist/
+build/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Rust
+*.pdb
+*.d
+
+# Tauri
+src-tauri/target/
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Docker
+docker-compose.override.yml
+
+# Synapse
+.synapse/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+*.lcov

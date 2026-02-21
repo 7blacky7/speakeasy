@@ -1,0 +1,66 @@
+# Build artifacts
+target/
+dist/
+build/
+node_modules/
+
+# Binary files
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.wasm
+
+# Generated files
+*.generated.*
+*.min.js
+*.min.css
+*.map
+
+# Package locks (large, generated)
+pnpm-lock.yaml
+Cargo.lock
+package-lock.json
+
+# Media / large files
+*.mp3
+*.wav
+*.ogg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.pdf
+*.zip
+*.tar.gz
+
+# Database files
+*.db
+*.db-wal
+*.db-shm
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker/data/
+
+# Test fixtures / snapshots
+tests/fixtures/
+__snapshots__/
+
+# Coverage
+coverage/
+*.lcov
+
+# Logs
+*.log
+logs/
