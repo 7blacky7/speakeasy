@@ -1,107 +1,137 @@
-import { createResource, createSignal, For, Show } from "solid-js";
+import { createSignal, createEffect, onCleanup, Show } from "solid-js";
 import { useParams } from "@solidjs/router";
 import { getServerInfo, joinChannel, type ChannelInfo } from "../bridge";
+import ChannelTree, { buildChannelTree, type ChannelNode } from "../components/server/ChannelTree";
+import ChannelInfoPanel from "../components/server/ChannelInfo";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import styles from "./ServerView.module.css";
 
 export default function ServerView() {
   const params = useParams<{ id: string }>();
-  const [serverInfo] = createResource(() => params.id, getServerInfo);
-  const [activeChannel, setActiveChannel] = createSignal<ChannelInfo | null>(null);
+  const [serverName, setServerName] = createSignal("");
+  const [serverVersion, setServerVersion] = createSignal("");
+  const [onlineClients, setOnlineClients] = createSignal(0);
+  const [maxClients, setMaxClients] = createSignal(0);
+  const [channels, setChannels] = createSignal<ChannelNode[]>([]);
+  const [rawChannels, setRawChannels] = createSignal<ChannelInfo[]>([]);
+  const [selectedChannel, setSelectedChannel] = createSignal<ChannelNode | null>(null);
+  const [currentChannelId, setCurrentChannelId] = createSignal<string | null>(null);
+  const [chatVisible, setChatVisible] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const [loading, setLoading] = createSignal(true);
 
-  const handleChannelClick = async (channel: ChannelInfo) => {
-    setActiveChannel(channel);
+  // Server-Info polling (alle 4 Sekunden)
+  let pollTimer: number | undefined;
+
+  const fetchServerInfo = async () => {
     try {
-      await joinChannel(channel.id);
+      const info = await getServerInfo();
+      setServerName(info.name);
+      setServerVersion(info.version);
+      setOnlineClients(info.online_clients);
+      setMaxClients(info.max_clients);
+      setRawChannels(info.channels);
+      setChannels(buildChannelTree(info.channels));
+      setError(null);
+      setLoading(false);
+    } catch (e) {
+      setError("Server nicht erreichbar");
+      setLoading(false);
+    }
+  };
+
+  createEffect(() => {
+    // Bei Server-Wechsel neu laden
+    void params.id;
+    setLoading(true);
+    fetchServerInfo();
+
+    pollTimer = window.setInterval(fetchServerInfo, 4000);
+  });
+
+  onCleanup(() => {
+    if (pollTimer) clearInterval(pollTimer);
+  });
+
+  const handleChannelJoin = async (channelId: string) => {
+    try {
+      await joinChannel(channelId);
+      setCurrentChannelId(channelId);
     } catch (e) {
       console.error("Kanal beitreten fehlgeschlagen:", e);
     }
   };
 
+  const handleChannelSelect = (channel: ChannelNode) => {
+    setSelectedChannel(channel);
+  };
+
+  const toggleChat = () => {
+    setChatVisible((v) => !v);
+  };
+
+  // Keyboard-Shortcut: Strg+Enter fuer Chat ein/aus
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.ctrlKey && e.key === "Enter") {
+      toggleChat();
+    }
+  };
+
+  createEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    onCleanup(() => document.removeEventListener("keydown", handleKeyDown));
+  });
+
+  // Aktiven Channel als ChannelInfo fuer ChatPanel finden
+  const activeChatChannel = () => {
+    const id = currentChannelId();
+    if (!id) return null;
+    return rawChannels().find((c) => c.id === id) ?? null;
+  };
+
   return (
     <div class={styles.page}>
-      <Show
-        when={!serverInfo.loading}
-        fallback={<div class={styles.loading}>Lade Serverinfo...</div>}
-      >
-        <Show
-          when={serverInfo()}
-          fallback={
-            <div class={styles.placeholder}>
-              <p>Server nicht erreichbar.</p>
+      <Show when={!loading()} fallback={<div class={styles.loading}>Lade Serverinfo...</div>}>
+        <Show when={!error()} fallback={<div class={styles.error}>{error()}</div>}>
+          {/* Server-Header */}
+          <div class={styles.serverHeader}>
+            <span class={styles.serverName}>{serverName()}</span>
+            <div class={styles.serverMeta}>
+              <span class={styles.metaBadge}>{onlineClients()}/{maxClients()} Clients</span>
+              <span class={styles.metaBadge}>v{serverVersion()}</span>
             </div>
-          }
-        >
-          {(info) => (
-            <div class={styles.serverContent}>
-              {/* Channel-Liste links */}
-              <div class={styles.channelSidebar}>
-                <div class={styles.serverHeader}>
-                  <div class={styles.serverName}>{info().name}</div>
-                  <div class={styles.serverMeta}>
-                    <span class={styles.metaBadge}>
-                      {info().online_clients}/{info().max_clients}
-                    </span>
-                    <span class={styles.metaBadge}>v{info().version}</span>
-                  </div>
-                </div>
+          </div>
 
-                <div class={styles.channelListScroll}>
-                  <div class={styles.sectionLabel}>Kanaele</div>
-                  <For each={info().channels}>
-                    {(channel) => (
-                      <>
-                        <button
-                          class={`${styles.channelItem} ${activeChannel()?.id === channel.id ? styles.active : ""}`}
-                          onClick={() => handleChannelClick(channel)}
-                        >
-                          <span class={styles.channelIcon}>
-                            {channel.description?.includes("[text]") ? "#" : "🔊"}
-                          </span>
-                          <span class={styles.channelName}>{channel.name}</span>
-                          <Show when={channel.clients.length > 0}>
-                            <span class={styles.userCount}>
-                              {channel.clients.length}
-                            </span>
-                          </Show>
-                        </button>
-
-                        {/* Mitglieder im Voice-Kanal unterhalb anzeigen */}
-                        <Show when={channel.clients.length > 0}>
-                          <div class={styles.memberList}>
-                            <For each={channel.clients}>
-                              {(client) => (
-                                <div class={styles.memberEntry}>
-                                  <div class={styles.memberAvatar}>
-                                    {client.username[0].toUpperCase()}
-                                  </div>
-                                  <span class={styles.memberName}>
-                                    {client.username}
-                                    {client.is_self ? " (Du)" : ""}
-                                  </span>
-                                  <div class={styles.memberIcons}>
-                                    {client.is_muted && (
-                                      <span title="Stummgeschaltet">🔇</span>
-                                    )}
-                                    {client.is_deafened && (
-                                      <span title="Taub">🔕</span>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </For>
-                          </div>
-                        </Show>
-                      </>
-                    )}
-                  </For>
-                </div>
-              </div>
-
-              {/* Chat-Panel rechts */}
-              <ChatPanel channel={activeChannel()} />
+          {/* Hauptbereich: ChannelTree links + ChannelInfo rechts */}
+          <div class={styles.mainArea}>
+            {/* Channel-Baum (links) */}
+            <div class={styles.channelTreePanel}>
+              <ChannelTree
+                channels={channels()}
+                currentChannelId={currentChannelId()}
+                currentUserId={null}
+                onChannelJoin={handleChannelJoin}
+                onChannelSelect={handleChannelSelect}
+              />
             </div>
-          )}
+
+            {/* Channel-Info (rechts) */}
+            <ChannelInfoPanel channel={selectedChannel()} />
+          </div>
+
+          {/* Chat-Panel (unten, einklappbar) */}
+          <div class={styles.chatToggle}>
+            <button class={styles.chatToggleBtn} onClick={toggleChat}>
+              {chatVisible() ? "Chat ausblenden" : "Chat einblenden"}
+              <span class={styles.chatShortcut}>Strg+Enter</span>
+            </button>
+          </div>
+
+          <Show when={chatVisible()}>
+            <div class={styles.chatArea}>
+              <ChatPanel channel={activeChatChannel()} />
+            </div>
+          </Show>
         </Show>
       </Show>
     </div>

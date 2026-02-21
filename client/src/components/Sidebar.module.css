@@ -1,196 +1,41 @@
 .sidebar {
   display: flex;
-  flex-direction: row;
-  height: 100%;
+  flex-direction: column;
+  width: 140px;
   flex-shrink: 0;
   background-color: var(--color-bg-primary);
   border-right: 1px solid var(--color-border);
 }
 
-/* --- Server-Liste (schmale Leiste links) --- */
-.serverList {
+.nav {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 72px;
-  padding: 8px 0;
-  gap: 4px;
-  overflow-y: auto;
-  background-color: var(--color-bg-primary);
+  padding: 8px 6px;
+  gap: 2px;
 }
 
-.homeBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background-color: var(--color-bg-tertiary);
-  border-radius: var(--radius-lg);
-  color: var(--color-accent);
-  font-size: 22px;
-  text-decoration: none;
-  transition: background-color 0.15s, border-radius 0.15s;
-}
-
-.homeBtn:hover {
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
-  color: #fff;
-}
-
-.separator {
-  width: 32px;
-  height: 2px;
-  background-color: var(--color-border);
-  border-radius: 1px;
-  margin: 4px 0;
-}
-
-.serverIcon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background-color: var(--color-bg-tertiary);
-  border: none;
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: background-color 0.15s, border-radius 0.15s;
-  overflow: visible;
-}
-
-.serverIcon:hover,
-.serverIcon.active {
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
-}
-
-.serverInitials {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  pointer-events: none;
-}
-
-.connectedDot {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 10px;
-  height: 10px;
-  background-color: var(--color-success);
-  border-radius: var(--radius-full);
-  border: 2px solid var(--color-bg-primary);
-}
-
-.addServerBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background-color: var(--color-bg-tertiary);
-  border: none;
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  color: var(--color-success);
-  font-size: 22px;
-  font-weight: 300;
-  transition: background-color 0.15s, border-radius 0.15s, color 0.15s;
-  margin-top: 4px;
-}
-
-.addServerBtn:hover {
-  background-color: var(--color-success);
-  border-radius: var(--radius-full);
-  color: #fff;
-}
-
-/* --- Channel-Liste --- */
-.channelList {
-  display: flex;
-  flex-direction: column;
-  width: 168px;
-  background-color: var(--color-bg-secondary);
-  overflow: hidden;
-}
-
-.channelListHeader {
-  padding: 12px 16px 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.serverName {
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.channels {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-}
-
-.channelSection {
-  padding: 4px 8px 2px 16px;
-  margin-top: 4px;
-}
-
-.sectionLabel {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-text-muted);
-}
-
-.channelItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 4px 8px 4px 12px;
+.navBtn {
+  display: block;
+  padding: 5px 10px;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  text-decoration: none;
   text-align: left;
   transition: background-color 0.1s, color 0.1s;
-  margin: 1px 4px;
-  width: calc(100% - 8px);
+  white-space: nowrap;
 }
 
-.channelItem:hover {
+.navBtn:hover {
   background-color: var(--color-bg-hover);
   color: var(--color-text-primary);
 }
 
-.channelIcon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.channelName {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: var(--font-size-sm);
-}
-
-.userCount {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  background-color: var(--color-bg-primary);
-  padding: 1px 5px;
-  border-radius: 8px;
+.navBtn.active {
+  background-color: var(--color-bg-active);
+  color: var(--color-text-primary);
 }

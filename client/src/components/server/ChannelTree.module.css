@@ -1,0 +1,149 @@
+.tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  font-size: var(--font-size-sm);
+}
+
+/* --- Channel-Zeile --- */
+.channelRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: background-color 0.08s;
+  min-height: 22px;
+  user-select: none;
+}
+
+.channelRow:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.channelRow.currentChannel {
+  background-color: var(--color-bg-active);
+}
+
+/* --- Toggle --- */
+.toggleBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.toggleBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.toggleSpacer {
+  width: 20px;
+  flex-shrink: 0;
+}
+
+/* --- Channel-Icon --- */
+.channelIcon {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.iconNormal {
+  color: var(--color-text-secondary);
+}
+
+.iconLocked {
+  color: var(--color-warning);
+}
+
+.iconFull {
+  color: var(--color-danger);
+}
+
+/* --- Channel-Name --- */
+.channelName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-sm);
+}
+
+/* --- Client-Zaehler --- */
+.clientCount {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* --- Client-Zeile --- */
+.clientRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  min-height: 20px;
+  cursor: default;
+  user-select: none;
+  transition: background-color 0.08s;
+}
+
+.clientRow:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.clientRow.selfClient .clientName {
+  font-weight: 700;
+}
+
+/* --- Client-Status-Icon --- */
+.clientStatus {
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.statusOnline {
+  color: var(--color-success);
+}
+
+.statusMuted {
+  color: var(--color-danger);
+}
+
+.statusDeafened {
+  color: var(--color-danger);
+}
+
+/* --- Client-Name --- */
+.clientName {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selfLabel {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* --- Branch --- */
+.branch {
+  /* Kein zusaetzlicher Abstand, Tree soll kompakt sein */
+}

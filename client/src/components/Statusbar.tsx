@@ -1,11 +1,14 @@
 import { createSignal } from "solid-js";
-import { toggleMute, toggleDeafen } from "../bridge";
+import { useNavigate } from "@solidjs/router";
+import { toggleMute, toggleDeafen, disconnect } from "../bridge";
 import styles from "./Statusbar.module.css";
 
 export default function Statusbar() {
   const [muted, setMuted] = createSignal(false);
   const [deafened, setDeafened] = createSignal(false);
+  const [away, setAway] = createSignal(false);
   const [connected] = createSignal(true);
+  const navigate = useNavigate();
 
   async function handleToggleMute() {
     try {
@@ -25,39 +28,61 @@ export default function Statusbar() {
     }
   }
 
+  function handleToggleAway() {
+    setAway((v) => !v);
+  }
+
+  async function handleDisconnect() {
+    try {
+      await disconnect();
+      navigate("/");
+    } catch (e) {
+      console.error("Trennen fehlgeschlagen:", e);
+    }
+  }
+
   return (
     <div class={`${styles.statusbar} no-select`}>
-      {/* Verbindungsstatus + User-Info */}
+      {/* User-Info */}
       <div class={styles.userInfo}>
-        <div class={styles.avatar}>
-          <span>U</span>
-          <span
-            class={`${styles.statusDot} ${connected() ? styles.online : styles.offline}`}
-          />
-        </div>
-        <div class={styles.userDetails}>
-          <span class={styles.username}>Benutzer</span>
-          <span class={styles.connectionStatus}>
-            {connected() ? "Verbunden" : "Getrennt"}
-          </span>
-        </div>
+        <span
+          class={`${styles.statusDot} ${connected() ? styles.online : styles.offline}`}
+        />
+        <span class={styles.username}>Benutzer</span>
       </div>
 
       {/* Audio-Controls */}
-      <div class={styles.audioControls}>
+      <div class={styles.controls}>
         <button
-          class={`${styles.audioBtn} ${muted() ? styles.active : ""}`}
+          class={`${styles.controlBtn} ${muted() ? styles.active : ""}`}
           onClick={handleToggleMute}
           title={muted() ? "Stummschaltung aufheben" : "Stummschalten"}
         >
-          {muted() ? "🔇" : "🎤"}
+          {muted() ? "MIC AUS" : "MIC"}
         </button>
         <button
-          class={`${styles.audioBtn} ${deafened() ? styles.active : ""}`}
+          class={`${styles.controlBtn} ${deafened() ? styles.active : ""}`}
           onClick={handleToggleDeafen}
           title={deafened() ? "Ton einschalten" : "Ton ausschalten"}
         >
-          {deafened() ? "🔕" : "🔊"}
+          {deafened() ? "TON AUS" : "TON"}
+        </button>
+        <button
+          class={`${styles.controlBtn} ${away() ? styles.away : ""}`}
+          onClick={handleToggleAway}
+          title={away() ? "Away-Status aufheben" : "Away setzen"}
+        >
+          AFK
+        </button>
+
+        <span class={styles.separator} />
+
+        <button
+          class={`${styles.controlBtn} ${styles.disconnectBtn}`}
+          onClick={handleDisconnect}
+          title="Verbindung trennen"
+        >
+          TRENNEN
         </button>
       </div>
     </div>

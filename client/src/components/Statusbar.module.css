@@ -15,29 +15,11 @@
   gap: 8px;
 }
 
-.avatar {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  color: #fff;
-  flex-shrink: 0;
-}
-
 .statusDot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: var(--radius-full);
-  border: 2px solid var(--color-bg-primary);
+  flex-shrink: 0;
 }
 
 .online {
@@ -48,54 +30,74 @@
   background-color: var(--color-text-muted);
 }
 
-.userDetails {
-  display: flex;
-  flex-direction: column;
-}
-
 .username {
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text-primary);
-  line-height: 1.2;
 }
 
-.connectionStatus {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  line-height: 1.2;
-}
-
-.audioControls {
+.controls {
   display: flex;
+  align-items: center;
   gap: 4px;
 }
 
-.audioBtn {
+.controlBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  padding: 3px 8px;
   background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  font-weight: 600;
   color: var(--color-text-secondary);
-  transition: background-color 0.1s, color 0.1s;
+  transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+  letter-spacing: 0.03em;
 }
 
-.audioBtn:hover {
+.controlBtn:hover {
   background-color: var(--color-bg-hover);
   color: var(--color-text-primary);
 }
 
-.audioBtn.active {
+.controlBtn.active {
   background-color: var(--color-danger);
+  border-color: var(--color-danger);
   color: #fff;
 }
 
-.audioBtn.active:hover {
+.controlBtn.active:hover {
   background-color: #d03333;
+}
+
+.controlBtn.away {
+  background-color: var(--color-warning);
+  border-color: var(--color-warning);
+  color: #1e2124;
+}
+
+.controlBtn.away:hover {
+  background-color: #e09418;
+}
+
+.disconnectBtn {
+  color: var(--color-danger);
+  border-color: rgba(240, 71, 71, 0.4);
+}
+
+.disconnectBtn:hover {
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+
+.separator {
+  width: 1px;
+  height: 20px;
+  background-color: var(--color-border);
+  margin: 0 4px;
 }
