@@ -37,7 +37,10 @@ impl<P: PermissionRepository> PermissionService<P> {
 
     /// Prueft ob ein Benutzer in einem Kanal eine bestimmte TriState-Berechtigung hat
     ///
-    /// Gibt `true` zurueck wenn die Berechtigung auf Grant gesetzt ist.
+    /// Wenn keine Permissions fuer den Benutzer existieren (leere Map),
+    /// wird `true` zurueckgegeben (Default: erlaubt).
+    /// Nur ein explizites Deny blockiert den Zugriff.
+    /// Wenn Permissions vorhanden sind aber der Key fehlt, gilt ebenfalls erlaubt.
     pub async fn berechtigung_pruefen(
         &self,
         user_id: Uuid,
@@ -46,10 +49,12 @@ impl<P: PermissionRepository> PermissionService<P> {
     ) -> AuthResult<bool> {
         let perms = self.alle_berechtigungen_laden(user_id, channel_id).await?;
         match perms.get(permission_key) {
-            None => Ok(false),
+            // Keine Regel fuer diesen Key -> erlaubt (wie TeamSpeak)
+            None => Ok(true),
             Some(eb) => match &eb.wert {
-                BerechtigungsWert::TriState(ts) => Ok(*ts == TriState::Grant),
-                _ => Ok(false),
+                // Nur explizites Deny blockiert
+                BerechtigungsWert::TriState(ts) => Ok(*ts != TriState::Deny),
+                _ => Ok(true),
             },
         }
     }
@@ -194,6 +199,19 @@ mod tests {
             Self { perms }
         }
 
+        fn mit_deny(user_id: Uuid, channel_id: Uuid, key: &str) -> Self {
+            let mut perms = HashMap::new();
+            perms.insert(
+                (user_id, channel_id),
+                vec![EffektiveBerechtigung {
+                    permission_key: key.to_string(),
+                    wert: BerechtigungsWert::TriState(TriState::Deny),
+                    quelle: "Test".to_string(),
+                }],
+            );
+            Self { perms }
+        }
+
         fn leer() -> Self {
             Self {
                 perms: HashMap::new(),
@@ -257,24 +275,53 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn fehlende_berechtigung_gibt_false() {
+    async fn fehlende_berechtigung_gibt_true_default_erlaubt() {
         let user_id = Uuid::new_v4();
         let channel_id = Uuid::new_v4();
         let repo = Arc::new(TestPermRepo::leer());
         let service = PermissionService::neu(repo);
 
+        // Keine Permissions vorhanden -> Default: erlaubt
         let ergebnis = service
             .berechtigung_pruefen(user_id, channel_id, "can_speak")
+            .await
+            .unwrap();
+        assert!(ergebnis);
+    }
+
+    #[tokio::test]
+    async fn explizites_deny_blockiert() {
+        let user_id = Uuid::new_v4();
+        let channel_id = Uuid::new_v4();
+        let repo = Arc::new(TestPermRepo::mit_deny(user_id, channel_id, "can_ban"));
+        let service = PermissionService::neu(repo);
+
+        let ergebnis = service
+            .berechtigung_pruefen(user_id, channel_id, "can_ban")
             .await
             .unwrap();
         assert!(!ergebnis);
     }
 
     #[tokio::test]
-    async fn berechtigung_erfordern_wirft_fehler_wenn_fehlend() {
+    async fn berechtigung_erfordern_erlaubt_wenn_keine_regel() {
         let user_id = Uuid::new_v4();
         let channel_id = Uuid::new_v4();
         let repo = Arc::new(TestPermRepo::leer());
+        let service = PermissionService::neu(repo);
+
+        // Keine Permissions -> Default erlaubt -> kein Fehler
+        let ergebnis = service
+            .berechtigung_erfordern(user_id, channel_id, "can_ban")
+            .await;
+        assert!(ergebnis.is_ok());
+    }
+
+    #[tokio::test]
+    async fn berechtigung_erfordern_wirft_fehler_bei_deny() {
+        let user_id = Uuid::new_v4();
+        let channel_id = Uuid::new_v4();
+        let repo = Arc::new(TestPermRepo::mit_deny(user_id, channel_id, "can_ban"));
         let service = PermissionService::neu(repo);
 
         let ergebnis = service

@@ -29,6 +29,7 @@ export default function ServerView() {
   const [serverVersion, setServerVersion] = createSignal("");
   const [onlineClients, setOnlineClients] = createSignal(0);
   const [maxClients, setMaxClients] = createSignal(0);
+  const [uptimeSecs, setUptimeSecs] = createSignal(0);
   const [channels, setChannels] = createSignal<ChannelNode[]>([]);
   const [rawChannels, setRawChannels] = createSignal<ChannelInfo[]>([]);
   const [selectedChannel, setSelectedChannel] = createSignal<ChannelNode | null>(null);
@@ -60,6 +61,7 @@ export default function ServerView() {
       setServerVersion(info.version);
       setOnlineClients(info.online_clients);
       setMaxClients(info.max_clients);
+      setUptimeSecs(info.uptime_secs);
       setRawChannels(info.channels);
       setChannels(buildChannelTree(info.channels));
       setError(null);
@@ -199,8 +201,9 @@ export default function ServerView() {
       await existing.setFocus();
       return;
     }
+    const baseUrl = window.location.origin;
     new WebviewWindow(label, {
-      url: "/admin",
+      url: `${baseUrl}/admin`,
       title: "Server-Verwaltung",
       width: 950,
       height: 700,
@@ -222,6 +225,10 @@ export default function ServerView() {
       {/* Menueleiste */}
       <MenuBar
         connected={!error()}
+        serverName={serverName()}
+        serverAddress={localStorage.getItem("speakeasy_last_address") || undefined}
+        serverPort={Number(localStorage.getItem("speakeasy_last_port")) || undefined}
+        username={currentUsername() || undefined}
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
       />
@@ -272,6 +279,7 @@ export default function ServerView() {
                   version={serverVersion()}
                   onlineClients={onlineClients()}
                   maxClients={maxClients()}
+                  uptimeSecs={uptimeSecs()}
                   isAdmin={true}
                   onServerUpdated={fetchServerInfo}
                 />

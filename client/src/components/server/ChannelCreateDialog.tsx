@@ -21,8 +21,19 @@ function deriveDefaultType(
   return permanentCount >= channels.length / 2 ? "permanent" : "temporary";
 }
 
+function suggestChannelName(channels: ChannelInfo[]): string {
+  const existing = new Set(channels.map((c) => c.name));
+  let name = "Neuer Channel";
+  if (!existing.has(name)) return name;
+  let i = 2;
+  while (existing.has(name + " " + i)) {
+    i++;
+  }
+  return name + " " + i;
+}
+
 export default function ChannelCreateDialog(props: ChannelCreateDialogProps) {
-  const [name, setName] = createSignal("");
+  const [name, setName] = createSignal(suggestChannelName(props.channels));
   const [description, setDescription] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [maxClients, setMaxClients] = createSignal(0);

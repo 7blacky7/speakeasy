@@ -58,6 +58,7 @@ pub struct ServerInfo {
     pub version: String,
     pub max_clients: u32,
     pub online_clients: u32,
+    pub uptime_secs: u64,
     pub channels: Vec<ChannelInfo>,
 }
 
@@ -1680,6 +1681,7 @@ pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, S
         version: info.version,
         max_clients: info.max_clients,
         online_clients: info.current_clients,
+        uptime_secs: info.uptime_secs,
         channels: channel_dtos,
     })
 }

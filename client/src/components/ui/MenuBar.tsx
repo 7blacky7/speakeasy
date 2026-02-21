@@ -1,7 +1,10 @@
 import { createSignal, For, Show, onMount, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { connectToServer } from "../../bridge";
 import styles from "./MenuBar.module.css";
+
+const BOOKMARKS_KEY = "speakeasy-bookmarks";
 
 async function openSettingsWindow(route: string, title: string, width: number, height: number) {
   const label = route.replace(/\//g, "-").replace(/^-/, "");
@@ -10,8 +13,9 @@ async function openSettingsWindow(route: string, title: string, width: number, h
     await existing.setFocus();
     return;
   }
+  const baseUrl = window.location.origin;
   new WebviewWindow(label, {
-    url: route,
+    url: `${baseUrl}${route}`,
     title,
     width,
     height,
@@ -29,9 +33,12 @@ export interface Bookmark {
 
 interface MenuBarProps {
   connected: boolean;
+  serverName?: string;
+  serverAddress?: string;
+  serverPort?: number;
+  username?: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
-  onBookmarkAdd?: () => void;
 }
 
 type OpenMenu = "server" | "bookmarks" | "settings" | null;
@@ -39,17 +46,50 @@ type OpenMenu = "server" | "bookmarks" | "settings" | null;
 export default function MenuBar(props: MenuBarProps) {
   const [openMenu, setOpenMenu] = createSignal<OpenMenu>(null);
   const [bookmarks, setBookmarks] = createSignal<Bookmark[]>([]);
+  const [bookmarkSaved, setBookmarkSaved] = createSignal(false);
   const navigate = useNavigate();
   let menubarRef: HTMLDivElement | undefined;
 
   const loadBookmarks = () => {
     try {
-      const stored = localStorage.getItem("speakeasy-bookmarks");
+      const stored = localStorage.getItem(BOOKMARKS_KEY);
       if (stored) {
         setBookmarks(JSON.parse(stored));
       }
     } catch {
       setBookmarks([]);
+    }
+  };
+
+  const saveBookmark = () => {
+    const address = props.serverAddress || localStorage.getItem("speakeasy_last_address") || "";
+    const port = props.serverPort || Number(localStorage.getItem("speakeasy_last_port") || "9001");
+    const username = props.username || localStorage.getItem("speakeasy_last_username") || "";
+    const name = props.serverName || `${address}:${port}`;
+
+    if (!address) return;
+
+    const current = [...bookmarks()];
+    const exists = current.some((b) => b.address === address && b.port === port);
+    if (!exists) {
+      current.push({ name, address, port, username });
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(current));
+      setBookmarks(current);
+    }
+    setBookmarkSaved(true);
+    setTimeout(() => setBookmarkSaved(false), 2000);
+  };
+
+  const handleBookmarkConnect = async (bm: Bookmark) => {
+    try {
+      await connectToServer({
+        address: bm.address,
+        port: bm.port,
+        username: bm.username,
+      });
+      navigate("/server/1");
+    } catch (e) {
+      console.error("Bookmark-Verbindung fehlgeschlagen:", e);
     }
   };
 
@@ -137,9 +177,16 @@ export default function MenuBar(props: MenuBarProps) {
           <div class={styles.dropdown}>
             <button
               class={`${styles.dropdownItem} ${!props.connected ? styles.disabled : ""}`}
-              onClick={() => closeAndAction(() => props.onBookmarkAdd?.())}
+              onClick={() => {
+                if (props.connected) {
+                  saveBookmark();
+                  setOpenMenu(null);
+                }
+              }}
             >
-              <span class={styles.dropdownLabel}>Bookmark hinzufuegen</span>
+              <span class={styles.dropdownLabel}>
+                {bookmarkSaved() ? "Gespeichert!" : "Bookmark hinzufuegen"}
+              </span>
             </button>
             <Show when={bookmarks().length > 0}>
               <div class={styles.separator} />
@@ -148,7 +195,7 @@ export default function MenuBar(props: MenuBarProps) {
                   <button
                     class={styles.bookmarkEntry}
                     onClick={() =>
-                      closeAndAction(() => navigate(`/server/${encodeURIComponent(bm.address)}:${bm.port}`))
+                      closeAndAction(() => handleBookmarkConnect(bm))
                     }
                   >
                     <span class={styles.dropdownLabel}>{bm.name}</span>

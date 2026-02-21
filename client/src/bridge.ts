@@ -139,6 +139,7 @@ export interface ServerInfo {
   version: string;
   max_clients: number;
   online_clients: number;
+  uptime_secs: number;
   channels: ChannelInfo[];
 }
 

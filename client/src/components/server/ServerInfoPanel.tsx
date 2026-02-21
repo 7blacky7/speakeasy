@@ -8,8 +8,18 @@ interface ServerInfoPanelProps {
   version: string;
   onlineClients: number;
   maxClients: number;
+  uptimeSecs?: number;
   isAdmin?: boolean;
   onServerUpdated?: () => void;
+}
+
+function formatUptime(secs: number): string {
+  const tage = Math.floor(secs / 86400);
+  const stunden = Math.floor((secs % 86400) / 3600);
+  const minuten = Math.floor((secs % 3600) / 60);
+  if (tage > 0) return `${tage}d ${stunden}h ${minuten}m`;
+  if (stunden > 0) return `${stunden}h ${minuten}m`;
+  return `${minuten}m`;
 }
 
 export default function ServerInfoPanel(props: ServerInfoPanelProps) {
@@ -66,14 +76,20 @@ export default function ServerInfoPanel(props: ServerInfoPanelProps) {
           <div class={styles.detailGrid}>
             <div class={styles.detailRow}>
               <span class={styles.detailLabel}>Version</span>
-              <span class={styles.detailValue}>{props.version}</span>
+              <span class={styles.detailValue}>{props.version || "---"}</span>
             </div>
             <div class={styles.detailRow}>
               <span class={styles.detailLabel}>Clients</span>
               <span class={styles.detailValue}>
-                {props.onlineClients}/{props.maxClients}
+                {props.onlineClients ?? 0}/{props.maxClients ?? 0}
               </span>
             </div>
+            <Show when={props.uptimeSecs != null && props.uptimeSecs > 0}>
+              <div class={styles.detailRow}>
+                <span class={styles.detailLabel}>Uptime</span>
+                <span class={styles.detailValue}>{formatUptime(props.uptimeSecs!)}</span>
+              </div>
+            </Show>
           </div>
         </div>
 
