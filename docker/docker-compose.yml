@@ -13,10 +13,10 @@ services:
     container_name: speakeasy
     image: speakeasy/server:latest
     ports:
-      - "9987:9987/udp"    # Voice-Daten (UDP)
-      - "30033:30033/tcp"  # File Transfer
-      - "10011:10011/tcp"  # ServerQuery TLS
-      - "8080:8080/tcp"    # REST/gRPC API
+      - "9988:9987/udp"    # Voice-Daten (UDP) – Host 9988 um Konflikt mit TS3 zu vermeiden
+      - "30034:30033/tcp"  # File Transfer – Host 30034 (TS3 belegt 30033)
+      - "10012:10011/tcp"  # ServerQuery TLS – Host 10012 (TS3 belegt 10011)
+      - "8180:8080/tcp"    # REST/gRPC API – Host 8180 (Agentenstube belegt 8080)
       - "9300:9300/tcp"    # Prometheus Metriken
       - "9301:9301/tcp"    # Health-Check
     volumes:

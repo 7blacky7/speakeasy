@@ -18,10 +18,10 @@ services:
     container_name: speakeasy-1
     image: speakeasy/server:latest
     ports:
-      - "9987:9987/udp"    # Voice-Daten
-      - "30033:30033/tcp"  # File Transfer
-      - "10011:10011/tcp"  # ServerQuery TLS
-      - "8080:8080/tcp"    # REST/gRPC API
+      - "9988:9987/udp"    # Voice-Daten (Host 9988, TS3 belegt 9987)
+      - "30034:30033/tcp"  # File Transfer (Host 30034, TS3 belegt 30033)
+      - "10012:10011/tcp"  # ServerQuery TLS (Host 10012, TS3 belegt 10011)
+      - "8180:8080/tcp"    # REST/gRPC API (Host 8180, Agentenstube belegt 8080)
       - "9300:9300/tcp"    # Prometheus Metriken
     volumes:
       - speakeasy-data-1:/data
@@ -58,11 +58,11 @@ services:
     container_name: speakeasy-2
     image: speakeasy/server:latest
     ports:
-      - "9988:9987/udp"    # Voice-Daten (alternativer Port)
-      - "30034:30033/tcp"  # File Transfer (alternativer Port)
-      - "10012:10011/tcp"  # ServerQuery TLS (alternativer Port)
-      - "8081:8080/tcp"    # REST/gRPC API (alternativer Port)
-      - "9302:9300/tcp"    # Prometheus Metriken (alternativer Port)
+      - "9989:9987/udp"    # Voice-Daten (Instanz 2)
+      - "30035:30033/tcp"  # File Transfer (Instanz 2)
+      - "10013:10011/tcp"  # ServerQuery TLS (Instanz 2)
+      - "8181:8080/tcp"    # REST/gRPC API (Instanz 2)
+      - "9303:9300/tcp"    # Prometheus Metriken (Instanz 2)
     volumes:
       - speakeasy-data-2:/data
     environment:
