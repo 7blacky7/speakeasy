@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import type { ChannelInfo } from "../../bridge";
 import { editChannel } from "../../bridge";
 import Modal from "../ui/Modal";
@@ -21,6 +21,7 @@ export default function ChannelEditDialog(props: ChannelEditDialogProps) {
   >(props.channel.channel_type ?? "permanent");
   const [error, setError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
+  const [expanded, setExpanded] = createSignal(true);
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -94,97 +95,112 @@ export default function ChannelEditDialog(props: ChannelEditDialogProps) {
           />
         </div>
 
-        {/* Beschreibung */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-edit-desc">
-            Beschreibung
-          </label>
-          <textarea
-            id="ch-edit-desc"
-            class={styles.textarea}
-            value={description()}
-            onInput={(e) => setDescription(e.currentTarget.value)}
-            placeholder="Optionale Beschreibung"
-            rows={3}
-            maxLength={512}
-          />
-        </div>
+        {/* Erweiterte Einstellungen Toggle */}
+        <button
+          type="button"
+          class={styles.expandToggle}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span class={styles.expandArrow}>{expanded() ? "▲" : "▼"}</span>
+          Erweiterte Einstellungen
+        </button>
 
-        {/* Passwort */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-edit-pw">
-            Neues Passwort
-          </label>
-          <input
-            id="ch-edit-pw"
-            type="password"
-            class={styles.input}
-            value={password()}
-            onInput={(e) => setPassword(e.currentTarget.value)}
-            placeholder="Leer lassen um unveraendert zu lassen"
-          />
-        </div>
-
-        {/* Max Clients */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-edit-max">
-            Max. Clients <span class={styles.hint}>(0 = unbegrenzt)</span>
-          </label>
-          <input
-            id="ch-edit-max"
-            type="number"
-            class={styles.input}
-            value={maxClients()}
-            onInput={(e) =>
-              setMaxClients(Math.max(0, parseInt(e.currentTarget.value) || 0))
-            }
-            min={0}
-            max={512}
-          />
-        </div>
-
-        {/* Parent-Channel (nur Info, nicht aenderbar) */}
-        <div class={styles.field}>
-          <span class={styles.label}>Parent-Channel</span>
-          <span class={styles.infoText}>{parentName()}</span>
-        </div>
-
-        {/* Channel-Typ */}
-        <div class={styles.field}>
-          <span class={styles.label}>Channel-Typ</span>
-          <div class={styles.radioGroup}>
-            <label class={styles.radioLabel}>
-              <input
-                type="radio"
-                name="ch-edit-type"
-                value="permanent"
-                checked={channelType() === "permanent"}
-                onChange={() => setChannelType("permanent")}
+        {/* Erweiterter Bereich - beim Bearbeiten standardmaessig aufgeklappt */}
+        <Show when={expanded()}>
+          <div class={styles.expandedSection}>
+            {/* Beschreibung */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-edit-desc">
+                Beschreibung
+              </label>
+              <textarea
+                id="ch-edit-desc"
+                class={styles.textarea}
+                value={description()}
+                onInput={(e) => setDescription(e.currentTarget.value)}
+                placeholder="Optionale Beschreibung"
+                rows={3}
+                maxLength={512}
               />
-              Permanent
-            </label>
-            <label class={styles.radioLabel}>
+            </div>
+
+            {/* Passwort */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-edit-pw">
+                Neues Passwort
+              </label>
               <input
-                type="radio"
-                name="ch-edit-type"
-                value="semi_permanent"
-                checked={channelType() === "semi_permanent"}
-                onChange={() => setChannelType("semi_permanent")}
+                id="ch-edit-pw"
+                type="password"
+                class={styles.input}
+                value={password()}
+                onInput={(e) => setPassword(e.currentTarget.value)}
+                placeholder="Leer lassen um unveraendert zu lassen"
               />
-              Semi-Permanent
-            </label>
-            <label class={styles.radioLabel}>
+            </div>
+
+            {/* Max Clients */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-edit-max">
+                Max. Clients <span class={styles.hint}>(0 = unbegrenzt)</span>
+              </label>
               <input
-                type="radio"
-                name="ch-edit-type"
-                value="temporary"
-                checked={channelType() === "temporary"}
-                onChange={() => setChannelType("temporary")}
+                id="ch-edit-max"
+                type="number"
+                class={styles.input}
+                value={maxClients()}
+                onInput={(e) =>
+                  setMaxClients(Math.max(0, parseInt(e.currentTarget.value) || 0))
+                }
+                min={0}
+                max={512}
               />
-              Temporaer
-            </label>
+            </div>
+
+            {/* Parent-Channel (nur Info, nicht aenderbar) */}
+            <div class={styles.field}>
+              <span class={styles.label}>Parent-Channel</span>
+              <span class={styles.infoText}>{parentName()}</span>
+            </div>
+
+            {/* Channel-Typ */}
+            <div class={styles.field}>
+              <span class={styles.label}>Channel-Typ</span>
+              <div class={styles.radioGroup}>
+                <label class={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="ch-edit-type"
+                    value="permanent"
+                    checked={channelType() === "permanent"}
+                    onChange={() => setChannelType("permanent")}
+                  />
+                  Permanent
+                </label>
+                <label class={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="ch-edit-type"
+                    value="semi_permanent"
+                    checked={channelType() === "semi_permanent"}
+                    onChange={() => setChannelType("semi_permanent")}
+                  />
+                  Semi-Permanent
+                </label>
+                <label class={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="ch-edit-type"
+                    value="temporary"
+                    checked={channelType() === "temporary"}
+                    onChange={() => setChannelType("temporary")}
+                  />
+                  Temporaer
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
+        </Show>
 
         {/* Fehler */}
         {error() && <div class={styles.errorMsg}>{error()}</div>}

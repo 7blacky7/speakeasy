@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import type { ChannelInfo } from "../../bridge";
 import { createChannel } from "../../bridge";
 import Modal from "../ui/Modal";
@@ -11,6 +11,16 @@ interface ChannelCreateDialogProps {
   onCreated: () => void;
 }
 
+function deriveDefaultType(
+  channels: ChannelInfo[]
+): "permanent" | "semi_permanent" | "temporary" {
+  if (channels.length === 0) return "permanent";
+  const permanentCount = channels.filter(
+    (c) => (c as ChannelInfo & { channel_type?: string }).channel_type === "permanent"
+  ).length;
+  return permanentCount >= channels.length / 2 ? "permanent" : "temporary";
+}
+
 export default function ChannelCreateDialog(props: ChannelCreateDialogProps) {
   const [name, setName] = createSignal("");
   const [description, setDescription] = createSignal("");
@@ -21,9 +31,10 @@ export default function ChannelCreateDialog(props: ChannelCreateDialogProps) {
   );
   const [channelType, setChannelType] = createSignal<
     "permanent" | "semi_permanent" | "temporary"
-  >("permanent");
+  >(deriveDefaultType(props.channels));
   const [error, setError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
+  const [expanded, setExpanded] = createSignal(false);
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -91,111 +102,126 @@ export default function ChannelCreateDialog(props: ChannelCreateDialogProps) {
           />
         </div>
 
-        {/* Beschreibung */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-desc">
-            Beschreibung
-          </label>
-          <textarea
-            id="ch-desc"
-            class={styles.textarea}
-            value={description()}
-            onInput={(e) => setDescription(e.currentTarget.value)}
-            placeholder="Optionale Beschreibung"
-            rows={3}
-            maxLength={512}
-          />
-        </div>
+        {/* Erweiterte Einstellungen Toggle */}
+        <button
+          type="button"
+          class={styles.expandToggle}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span class={styles.expandArrow}>{expanded() ? "▲" : "▼"}</span>
+          Erweiterte Einstellungen
+        </button>
 
-        {/* Passwort */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-pw">
-            Passwort
-          </label>
-          <input
-            id="ch-pw"
-            type="password"
-            class={styles.input}
-            value={password()}
-            onInput={(e) => setPassword(e.currentTarget.value)}
-            placeholder="Leer lassen fuer keinen Schutz"
-          />
-        </div>
-
-        {/* Max Clients */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-max">
-            Max. Clients <span class={styles.hint}>(0 = unbegrenzt)</span>
-          </label>
-          <input
-            id="ch-max"
-            type="number"
-            class={styles.input}
-            value={maxClients()}
-            onInput={(e) =>
-              setMaxClients(Math.max(0, parseInt(e.currentTarget.value) || 0))
-            }
-            min={0}
-            max={512}
-          />
-        </div>
-
-        {/* Parent-Channel */}
-        <div class={styles.field}>
-          <label class={styles.label} for="ch-parent">
-            Parent-Channel
-          </label>
-          <select
-            id="ch-parent"
-            class={styles.select}
-            value={parentId()}
-            onChange={(e) => setParentId(e.currentTarget.value)}
-          >
-            <option value="">Kein Parent (Root)</option>
-            <For each={props.channels}>
-              {(ch) => (
-                <option value={ch.id}>{ch.name}</option>
-              )}
-            </For>
-          </select>
-        </div>
-
-        {/* Channel-Typ */}
-        <div class={styles.field}>
-          <span class={styles.label}>Channel-Typ</span>
-          <div class={styles.radioGroup}>
-            <label class={styles.radioLabel}>
-              <input
-                type="radio"
-                name="channel-type"
-                value="permanent"
-                checked={channelType() === "permanent"}
-                onChange={() => setChannelType("permanent")}
+        {/* Erweiterter Bereich */}
+        <Show when={expanded()}>
+          <div class={styles.expandedSection}>
+            {/* Beschreibung */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-desc">
+                Beschreibung
+              </label>
+              <textarea
+                id="ch-desc"
+                class={styles.textarea}
+                value={description()}
+                onInput={(e) => setDescription(e.currentTarget.value)}
+                placeholder="Optionale Beschreibung"
+                rows={3}
+                maxLength={512}
               />
-              Permanent
-            </label>
-            <label class={styles.radioLabel}>
+            </div>
+
+            {/* Passwort */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-pw">
+                Passwort
+              </label>
               <input
-                type="radio"
-                name="channel-type"
-                value="semi_permanent"
-                checked={channelType() === "semi_permanent"}
-                onChange={() => setChannelType("semi_permanent")}
+                id="ch-pw"
+                type="password"
+                class={styles.input}
+                value={password()}
+                onInput={(e) => setPassword(e.currentTarget.value)}
+                placeholder="Leer lassen fuer keinen Schutz"
               />
-              Semi-Permanent
-            </label>
-            <label class={styles.radioLabel}>
+            </div>
+
+            {/* Max Clients */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-max">
+                Max. Clients <span class={styles.hint}>(0 = unbegrenzt)</span>
+              </label>
               <input
-                type="radio"
-                name="channel-type"
-                value="temporary"
-                checked={channelType() === "temporary"}
-                onChange={() => setChannelType("temporary")}
+                id="ch-max"
+                type="number"
+                class={styles.input}
+                value={maxClients()}
+                onInput={(e) =>
+                  setMaxClients(Math.max(0, parseInt(e.currentTarget.value) || 0))
+                }
+                min={0}
+                max={512}
               />
-              Temporaer
-            </label>
+            </div>
+
+            {/* Parent-Channel */}
+            <div class={styles.field}>
+              <label class={styles.label} for="ch-parent">
+                Parent-Channel
+              </label>
+              <select
+                id="ch-parent"
+                class={styles.select}
+                value={parentId()}
+                onChange={(e) => setParentId(e.currentTarget.value)}
+              >
+                <option value="">Kein Parent (Root)</option>
+                <For each={props.channels}>
+                  {(ch) => (
+                    <option value={ch.id}>{ch.name}</option>
+                  )}
+                </For>
+              </select>
+            </div>
+
+            {/* Channel-Typ */}
+            <div class={styles.field}>
+              <span class={styles.label}>Channel-Typ</span>
+              <div class={styles.radioGroup}>
+                <label class={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="channel-type"
+                    value="permanent"
+                    checked={channelType() === "permanent"}
+                    onChange={() => setChannelType("permanent")}
+                  />
+                  Permanent
+                </label>
+                <label class={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="channel-type"
+                    value="semi_permanent"
+                    checked={channelType() === "semi_permanent"}
+                    onChange={() => setChannelType("semi_permanent")}
+                  />
+                  Semi-Permanent
+                </label>
+                <label class={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="channel-type"
+                    value="temporary"
+                    checked={channelType() === "temporary"}
+                    onChange={() => setChannelType("temporary")}
+                  />
+                  Temporaer
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
+        </Show>
 
         {/* Fehler */}
         {error() && <div class={styles.errorMsg}>{error()}</div>}
