@@ -21,6 +21,7 @@ async function openSettingsWindow(route: string, title: string, width: number, h
     height,
     resizable: true,
     center: true,
+    decorations: false,
   });
 }
 

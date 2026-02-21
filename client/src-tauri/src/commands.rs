@@ -1663,15 +1663,33 @@ pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, S
         .map_err(|e| format!("Channel-Liste Abfrage fehlgeschlagen: {}", e))?;
 
     // Protokoll-Typen in Client-DTOs konvertieren
+    let clients = conn.get_client_list().await.unwrap_or_default();
+    let my_user_id = conn.user_id().unwrap_or_default().to_string();
+
     let channel_dtos: Vec<ChannelInfo> = channels
         .into_iter()
-        .map(|ch| ChannelInfo {
-            id: ch.channel_id.inner().to_string(),
-            name: ch.name,
-            description: ch.description.unwrap_or_default(),
-            parent_id: ch.parent_id.map(|p| p.inner().to_string()),
-            clients: vec![],
-            max_clients: ch.max_clients.unwrap_or(0),
+        .map(|ch| {
+            let ch_id_ref = &ch.channel_id;
+            let channel_clients = clients
+                .iter()
+                .filter(|c| c.channel_id.as_ref() == Some(ch_id_ref))
+                .map(|c| ClientInfo {
+                    id: c.user_id.inner().to_string(),
+                    username: if c.display_name.is_empty() { c.username.clone() } else { c.display_name.clone() },
+                    is_muted: c.is_input_muted || c.is_muted,
+                    is_deafened: c.is_deafened,
+                    is_self: c.user_id.inner().to_string() == my_user_id,
+                })
+                .collect();
+
+            ChannelInfo {
+                id: ch.channel_id.inner().to_string(),
+                name: ch.name,
+                description: ch.description.unwrap_or_default(),
+                parent_id: ch.parent_id.map(|p| p.inner().to_string()),
+                clients: channel_clients,
+                max_clients: ch.max_clients.unwrap_or(0),
+            }
         })
         .collect();
 

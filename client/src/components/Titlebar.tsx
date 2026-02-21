@@ -1,14 +1,27 @@
+import { createSignal, onMount } from "solid-js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import styles from "./Titlebar.module.css";
 
 export default function Titlebar() {
   const appWindow = getCurrentWindow();
+  const [title, setTitle] = createSignal("Speakeasy");
+
+  onMount(async () => {
+    try {
+      const winTitle = await appWindow.title();
+      if (winTitle) {
+        setTitle(winTitle);
+      }
+    } catch {
+      // Fallback
+    }
+  });
 
   return (
     <div class={`${styles.titlebar} no-select`} data-tauri-drag-region>
       <div class={styles.appName} data-tauri-drag-region>
         <span class={styles.logo}>▶</span>
-        <span>Speakeasy</span>
+        <span>{title()}</span>
       </div>
       <div class={styles.controls}>
         <button

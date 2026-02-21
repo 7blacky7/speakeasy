@@ -246,6 +246,7 @@ export default function ServerView() {
       height: 700,
       resizable: true,
       center: true,
+      decorations: false,
     });
   };
 

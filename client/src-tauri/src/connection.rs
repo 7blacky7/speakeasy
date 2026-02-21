@@ -301,6 +301,25 @@ impl ServerConnection {
         }
     }
 
+    /// Client-Liste abrufen
+    pub async fn get_client_list(
+        &mut self,
+    ) -> Result<Vec<speakeasy_protocol::control::ClientInfo>, ConnectionError> {
+        let request_id = self.next_id();
+        let msg = ControlMessage::new(request_id, ControlPayload::ClientList);
+
+        let response = self.send_and_receive(msg).await?;
+        Self::check_error(&response)?;
+
+        match response.payload {
+            ControlPayload::ClientListResponse(list) => Ok(list.clients),
+            other => Err(ConnectionError::UnexpectedResponse(format!(
+                "Erwartet ClientListResponse, erhalten: {:?}",
+                std::mem::discriminant(&other)
+            ))),
+        }
+    }
+
     /// Voice-Init: UDP Port Negotiation mit dem Server
     ///
     /// Sendet den lokalen UDP-Port und empfaengt Server-UDP-Adresse + SSRC.
