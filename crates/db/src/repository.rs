@@ -8,9 +8,10 @@ use uuid::Uuid;
 use crate::error::DbError;
 use crate::models::{
     AuditLogFilter, AuditLogRecord, BanRecord, BenutzerRecord, BenutzerUpdate,
-    BerechtigungsWert, BerechtigungsZiel, EffektiveBerechtigung, EinladungRecord,
-    KanalGruppeRecord, KanalRecord, KanalUpdate, NeueEinladung, NeueKanalGruppe,
-    NeuerKanal, NeuerBan, NeuerBenutzer, NeueServerGruppe, ServerGruppeRecord,
+    BerechtigungsWert, BerechtigungsZiel, ChatNachrichtRecord, DateiKontingentRecord,
+    DateiRecord, EffektiveBerechtigung, EinladungRecord, KanalGruppeRecord, KanalRecord,
+    KanalUpdate, NachrichtenFilter, NeueDatei, NeueEinladung, NeueKanalGruppe, NeuerBan,
+    NeuerBenutzer, NeuerKanal, NeueNachricht, NeueServerGruppe, ServerGruppeRecord,
 };
 
 pub type DbResult<T> = Result<T, DbError>;
@@ -316,4 +317,64 @@ pub trait InviteRepository: Send + Sync {
 
     /// Einladung widerrufen
     async fn revoke(&self, id: Uuid) -> DbResult<bool>;
+}
+
+// ---------------------------------------------------------------------------
+// ChatMessageRepository
+// ---------------------------------------------------------------------------
+
+/// Repository fuer Chat-Nachrichten
+#[allow(async_fn_in_trait)]
+pub trait ChatMessageRepository: Send + Sync {
+    /// Neue Nachricht anlegen
+    async fn create(&self, data: NeueNachricht<'_>) -> DbResult<ChatNachrichtRecord>;
+
+    /// Nachricht anhand ihrer ID laden
+    async fn get_by_id(&self, id: Uuid) -> DbResult<Option<ChatNachrichtRecord>>;
+
+    /// Nachrichten-History eines Kanals laden (Cursor-Pagination, aelteste zuerst)
+    async fn get_history(&self, filter: NachrichtenFilter) -> DbResult<Vec<ChatNachrichtRecord>>;
+
+    /// Nachrichteninhalt editieren
+    async fn update_content(&self, id: Uuid, new_content: &str) -> DbResult<ChatNachrichtRecord>;
+
+    /// Nachricht weich loeschen (Soft-Delete)
+    async fn soft_delete(&self, id: Uuid) -> DbResult<bool>;
+
+    /// Nachrichten eines Kanals nach Text durchsuchen
+    async fn search(
+        &self,
+        channel_id: Uuid,
+        query: &str,
+        limit: i64,
+    ) -> DbResult<Vec<ChatNachrichtRecord>>;
+}
+
+// ---------------------------------------------------------------------------
+// FileRepository
+// ---------------------------------------------------------------------------
+
+/// Repository fuer Dateien und Kontingente
+#[allow(async_fn_in_trait)]
+pub trait FileRepository: Send + Sync {
+    /// Datei-Eintrag anlegen
+    async fn create(&self, data: NeueDatei<'_>) -> DbResult<DateiRecord>;
+
+    /// Datei anhand ihrer ID laden
+    async fn get_by_id(&self, id: Uuid) -> DbResult<Option<DateiRecord>>;
+
+    /// Alle aktiven Dateien eines Kanals auflisten
+    async fn list_by_channel(&self, channel_id: Uuid) -> DbResult<Vec<DateiRecord>>;
+
+    /// Datei weich loeschen
+    async fn soft_delete(&self, id: Uuid) -> DbResult<bool>;
+
+    /// Kontingent fuer eine Gruppe laden (oder Standard-Werte)
+    async fn get_quota(&self, group_id: &str) -> DbResult<DateiKontingentRecord>;
+
+    /// Aktuelle Speichernutzung einer Gruppe erhoehen
+    async fn increment_usage(&self, group_id: &str, bytes: i64) -> DbResult<()>;
+
+    /// Aktuelle Speichernutzung einer Gruppe verringern
+    async fn decrement_usage(&self, group_id: &str, bytes: i64) -> DbResult<()>;
 }

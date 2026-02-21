@@ -34,7 +34,7 @@ pub mod sqlite;
 pub use error::DbError;
 pub use repository::{
     AuditLogRepository, BanRepository, ChannelGroupRepository, ChannelRepository,
-    DatabaseBackend, DatabaseConfig, DbResult, InviteRepository, PermissionRepository,
-    ServerGroupRepository, UserRepository,
+    ChatMessageRepository, DatabaseBackend, DatabaseConfig, DbResult, FileRepository,
+    InviteRepository, PermissionRepository, ServerGroupRepository, UserRepository,
 };
 pub use sqlite::SqliteDb;

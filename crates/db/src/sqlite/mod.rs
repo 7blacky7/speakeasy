@@ -3,6 +3,8 @@
 pub mod audit;
 pub mod bans;
 pub mod channels;
+pub mod chat;
+pub mod files;
 pub mod groups;
 pub mod invites;
 pub mod permissions_repo;

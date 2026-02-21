@@ -344,3 +344,112 @@ pub struct NeueEinladung<'a> {
     pub expires_at: Option<DateTime<Utc>>,
     pub created_by: Uuid,
 }
+
+// ---------------------------------------------------------------------------
+// Chat-Nachrichten
+// ---------------------------------------------------------------------------
+
+/// Nachrichtentyp
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NachrichtenTyp {
+    Text,
+    File,
+    System,
+}
+
+impl NachrichtenTyp {
+    pub fn als_str(&self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::File => "file",
+            Self::System => "system",
+        }
+    }
+}
+
+impl std::str::FromStr for NachrichtenTyp {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "text" => Ok(Self::Text),
+            "file" => Ok(Self::File),
+            "system" => Ok(Self::System),
+            other => Err(format!("Unbekannter Nachrichten-Typ: {other}")),
+        }
+    }
+}
+
+/// Chat-Nachrichten-Datensatz
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatNachrichtRecord {
+    pub id: Uuid,
+    pub channel_id: Uuid,
+    pub sender_id: Uuid,
+    pub content: String,
+    pub message_type: NachrichtenTyp,
+    pub reply_to: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub edited_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
+/// Daten zum Erstellen einer neuen Chat-Nachricht
+#[derive(Debug, Clone)]
+pub struct NeueNachricht<'a> {
+    pub channel_id: Uuid,
+    pub sender_id: Uuid,
+    pub content: &'a str,
+    pub message_type: NachrichtenTyp,
+    pub reply_to: Option<Uuid>,
+}
+
+/// Filter fuer Nachrichten-History (Cursor-Pagination)
+#[derive(Debug, Clone, Default)]
+pub struct NachrichtenFilter {
+    pub channel_id: Uuid,
+    /// Cursor: Nachrichten vor diesem Zeitstempel laden
+    pub before: Option<DateTime<Utc>>,
+    /// Maximale Anzahl Nachrichten (Default: 50)
+    pub limit: Option<i64>,
+}
+
+// ---------------------------------------------------------------------------
+// Dateien
+// ---------------------------------------------------------------------------
+
+/// Datei-Datensatz
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DateiRecord {
+    pub id: Uuid,
+    pub channel_id: Uuid,
+    pub uploader_id: Uuid,
+    pub filename: String,
+    pub mime_type: String,
+    pub size_bytes: i64,
+    pub storage_path: String,
+    pub checksum: String,
+    pub created_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
+/// Daten zum Erstellen einer neuen Datei
+#[derive(Debug, Clone)]
+pub struct NeueDatei<'a> {
+    pub channel_id: Uuid,
+    pub uploader_id: Uuid,
+    pub filename: &'a str,
+    pub mime_type: &'a str,
+    pub size_bytes: i64,
+    pub storage_path: &'a str,
+    pub checksum: &'a str,
+}
+
+/// Datei-Kontingent-Datensatz
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DateiKontingentRecord {
+    pub group_id: String,
+    pub max_file_size: i64,
+    pub max_total_storage: i64,
+    pub current_usage: i64,
+}
