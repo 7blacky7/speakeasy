@@ -199,22 +199,13 @@ impl Default for ObservabilityEinstellungen {
 }
 
 /// Plugin-Einstellungen
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PluginEinstellungen {
     /// Aktiviert das Plugin-System
     pub aktiviert: bool,
     /// Verzeichnis fuer Plugin-Dateien (optional)
     pub verzeichnis: Option<String>,
-}
-
-impl Default for PluginEinstellungen {
-    fn default() -> Self {
-        Self {
-            aktiviert: false,
-            verzeichnis: None,
-        }
-    }
 }
 
 impl ServerConfig {
