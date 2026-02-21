@@ -1,0 +1,380 @@
+// speakeasy.proto – gRPC Service-Definitionen fuer den Speakeasy Commander
+//
+// Dieses File definiert alle gRPC-Services fuer die High-Level-API
+// (REST-Ersatz fuer Web-Dashboards, Bots und die Commander-CLI).
+//
+// Kompilierung (Phase 5):
+//   protoc --rust_out=... --grpc_out=... speakeasy.proto
+//   oder via tonic-build in build.rs
+//
+// Syntax: Proto3
+
+syntax = "proto3";
+
+package speakeasy.v1;
+
+option java_package = "io.speakeasy.v1";
+option java_multiple_files = true;
+option go_package = "github.com/7blacky7/speakeasy/proto/speakeasyv1";
+
+// ---------------------------------------------------------------------------
+// Gemeinsame Typen
+// ---------------------------------------------------------------------------
+
+// Eindeutige Benutzer-ID (UUID v4 als String)
+message UserId {
+  string value = 1;
+}
+
+// Eindeutige Kanal-ID (UUID v4 als String)
+message ChannelId {
+  string value = 1;
+}
+
+// Eindeutige Server-ID (UUID v4 als String)
+message ServerId {
+  string value = 1;
+}
+
+// Standardisierte leere Antwort
+message Empty {}
+
+// Pagination-Parameter fuer Listenabfragen
+message PageRequest {
+  uint32 page = 1;
+  uint32 page_size = 2;  // Max 1000
+}
+
+// Pagination-Metadaten in Listenantworten
+message PageInfo {
+  uint32 total_count = 1;
+  uint32 page = 2;
+  uint32 page_size = 3;
+  bool has_next_page = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Server-Typen
+// ---------------------------------------------------------------------------
+
+// Vollstaendige Server-Informationen
+message ServerInfo {
+  ServerId server_id = 1;
+  string name = 2;
+  string welcome_message = 3;
+  uint32 max_clients = 4;
+  uint32 current_clients = 5;
+  string version = 6;
+  uint64 uptime_secs = 7;
+  string host_message = 8;
+  repeated string default_groups = 9;
+}
+
+// ---------------------------------------------------------------------------
+// Kanal-Typen
+// ---------------------------------------------------------------------------
+
+// Kanal-Informationen
+message ChannelInfo {
+  ChannelId channel_id = 1;
+  string name = 2;
+  string description = 3;
+  ChannelId parent_id = 4;         // Optional: leer = Root-Kanal
+  int32 sort_order = 5;
+  uint32 max_clients = 6;          // 0 = unbegrenzt
+  uint32 current_clients = 7;
+  bool password_protected = 8;
+  string codec = 9;
+  uint32 codec_quality = 10;
+  bool permanent = 11;
+}
+
+// Kanal erstellen
+message CreateChannelRequest {
+  string name = 1;
+  string description = 2;
+  ChannelId parent_id = 3;
+  string password = 4;             // Leer = kein Passwort
+  uint32 max_clients = 5;
+  int32 sort_order = 6;
+  bool permanent = 7;
+}
+
+message CreateChannelResponse {
+  ChannelInfo channel = 1;
+}
+
+// Kanal bearbeiten
+message UpdateChannelRequest {
+  ChannelId channel_id = 1;
+  string name = 2;
+  string description = 3;
+  string password = 4;
+  uint32 max_clients = 5;
+  int32 sort_order = 6;
+}
+
+// Kanal loeschen
+message DeleteChannelRequest {
+  ChannelId channel_id = 1;
+  ChannelId move_clients_to = 2;   // Optional: Ziel fuer verbleibende Clients
+}
+
+// Kanalliste
+message ListChannelsRequest {
+  ServerId server_id = 1;
+  PageRequest page = 2;
+}
+
+message ListChannelsResponse {
+  repeated ChannelInfo channels = 1;
+  PageInfo page_info = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Client-Typen
+// ---------------------------------------------------------------------------
+
+// Client-Informationen
+message ClientInfo {
+  UserId user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  ChannelId channel_id = 4;
+  repeated string server_groups = 5;
+  bool is_muted = 6;
+  bool is_deafened = 7;
+  bool is_input_muted = 8;
+  string client_version = 9;
+  uint64 connected_since_ms = 10;
+  string ip_address = 11;          // Nur fuer Admins sichtbar
+}
+
+// Clientliste
+message ListClientsRequest {
+  ServerId server_id = 1;
+  ChannelId channel_id = 2;        // Optional: Filter nach Kanal
+  PageRequest page = 3;
+}
+
+message ListClientsResponse {
+  repeated ClientInfo clients = 1;
+  PageInfo page_info = 2;
+}
+
+// Client kicken
+message KickClientRequest {
+  UserId target_user_id = 1;
+  string reason = 2;
+  bool from_channel_only = 3;
+}
+
+// Client bannen
+message BanClientRequest {
+  UserId target_user_id = 1;
+  string reason = 2;
+  uint64 duration_secs = 3;        // 0 = dauerhaft
+  bool ban_ip = 4;
+}
+
+// Client verschieben
+message MoveClientRequest {
+  UserId target_user_id = 1;
+  ChannelId target_channel_id = 2;
+  string reason = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Permission-Typen
+// ---------------------------------------------------------------------------
+
+// Permission-Wert (TriState + Integer-Limit)
+message PermissionValue {
+  oneof value {
+    bool grant = 1;
+    bool deny = 2;
+    bool skip = 3;
+    int64 int_limit = 4;
+  }
+}
+
+// Permission-Eintrag
+message PermissionEntry {
+  string permission = 1;
+  PermissionValue value = 2;
+}
+
+// Permission-Abfrage
+message GetPermissionsRequest {
+  string target = 1;               // Gruppen-ID oder User-ID
+  string scope = 2;                // "server" oder "channel:<channel_id>"
+}
+
+message GetPermissionsResponse {
+  string target = 1;
+  repeated PermissionEntry permissions = 2;
+}
+
+// Permission setzen
+message SetPermissionRequest {
+  string target = 1;
+  string permission = 2;
+  PermissionValue value = 3;
+  string scope = 4;
+}
+
+// Permission entfernen
+message RemovePermissionRequest {
+  string target = 1;
+  string permission = 2;
+  string scope = 3;
+}
+
+// ---------------------------------------------------------------------------
+// File-Typen
+// ---------------------------------------------------------------------------
+
+// Datei-Eintrag
+message FileEntry {
+  string file_id = 1;
+  string name = 2;
+  uint64 size_bytes = 3;
+  ChannelId channel_id = 4;
+  UserId uploaded_by = 5;
+  uint64 uploaded_at_ms = 6;
+  string mime_type = 7;
+  string checksum_sha256 = 8;
+}
+
+// Dateiliste
+message ListFilesRequest {
+  ChannelId channel_id = 1;
+  PageRequest page = 2;
+}
+
+message ListFilesResponse {
+  repeated FileEntry files = 1;
+  PageInfo page_info = 2;
+}
+
+// Datei-Upload initiieren
+message InitiateUploadRequest {
+  ChannelId channel_id = 1;
+  string filename = 2;
+  uint64 size_bytes = 3;
+  string mime_type = 4;
+  string checksum_sha256 = 5;
+}
+
+message InitiateUploadResponse {
+  string file_id = 1;
+  string upload_url = 2;
+  uint64 expires_in_secs = 3;
+}
+
+// Datei loeschen
+message DeleteFileRequest {
+  string file_id = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
+
+// ServerService – Server-Verwaltung
+service ServerService {
+  // Server-Informationen abrufen
+  rpc GetServerInfo(Empty) returns (ServerInfo);
+
+  // Server-Konfiguration aendern
+  rpc UpdateServer(UpdateServerRequest) returns (ServerInfo);
+
+  // Server herunterfahren (nur Super-Admin)
+  rpc StopServer(StopServerRequest) returns (Empty);
+
+  // Server-Metriken abrufen (RTT, Loss, Jitter, CPU, Bitrate)
+  rpc GetMetrics(Empty) returns (ServerMetrics);
+}
+
+// Request-/Response-Typen fuer ServerService
+message UpdateServerRequest {
+  string name = 1;
+  string welcome_message = 2;
+  uint32 max_clients = 3;
+  string host_message = 4;
+}
+
+message StopServerRequest {
+  string reason = 1;
+  uint32 delay_secs = 2;
+}
+
+message ServerMetrics {
+  double avg_rtt_ms = 1;
+  double packet_loss_percent = 2;
+  double avg_jitter_ms = 3;
+  double cpu_usage_percent = 4;
+  uint64 total_bitrate_kbps = 5;
+  uint32 connected_clients = 6;
+  uint64 uptime_secs = 7;
+}
+
+// ChannelService – Kanal-Verwaltung
+service ChannelService {
+  // Alle Kanaele auflisten
+  rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse);
+
+  // Einzelnen Kanal abrufen
+  rpc GetChannel(ChannelId) returns (ChannelInfo);
+
+  // Kanal erstellen
+  rpc CreateChannel(CreateChannelRequest) returns (CreateChannelResponse);
+
+  // Kanal bearbeiten
+  rpc UpdateChannel(UpdateChannelRequest) returns (ChannelInfo);
+
+  // Kanal loeschen
+  rpc DeleteChannel(DeleteChannelRequest) returns (Empty);
+}
+
+// ClientService – Client-Verwaltung
+service ClientService {
+  // Alle verbundenen Clients auflisten
+  rpc ListClients(ListClientsRequest) returns (ListClientsResponse);
+
+  // Einzelnen Client abrufen
+  rpc GetClient(UserId) returns (ClientInfo);
+
+  // Client kicken
+  rpc KickClient(KickClientRequest) returns (Empty);
+
+  // Client bannen
+  rpc BanClient(BanClientRequest) returns (Empty);
+
+  // Client in anderen Kanal verschieben
+  rpc MoveClient(MoveClientRequest) returns (Empty);
+}
+
+// PermissionService – Rechte-Verwaltung
+service PermissionService {
+  // Permissions fuer Gruppe/User abrufen
+  rpc GetPermissions(GetPermissionsRequest) returns (GetPermissionsResponse);
+
+  // Permission setzen
+  rpc SetPermission(SetPermissionRequest) returns (Empty);
+
+  // Permission entfernen
+  rpc RemovePermission(RemovePermissionRequest) returns (Empty);
+}
+
+// FileService – Datei-Verwaltung
+service FileService {
+  // Dateien eines Kanals auflisten
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+
+  // Upload initiieren (gibt Upload-URL zurueck)
+  rpc InitiateUpload(InitiateUploadRequest) returns (InitiateUploadResponse);
+
+  // Datei loeschen
+  rpc DeleteFile(DeleteFileRequest) returns (Empty);
+}
