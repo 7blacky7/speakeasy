@@ -1,0 +1,60 @@
+.uploadBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.1s, background-color 0.1s;
+}
+
+.uploadBtn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.uploadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Drag-Overlay ueber dem gesamten Chat-Bereich */
+.dropOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(114, 137, 218, 0.15);
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.dropOverlayContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-accent);
+}
+
+.dropIcon {
+  font-size: 48px;
+}
+
+.dropText {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.hiddenInput {
+  display: none;
+}

@@ -208,3 +208,85 @@ export async function toggleDeafen(): Promise<boolean> {
 export async function getServerInfo(): Promise<ServerInfo> {
   return invoke("get_server_info");
 }
+
+// --- Chat-Typen (Phase 4) ---
+
+export interface FileInfo {
+  id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  sender_name: string;
+  content: string;
+  message_type: "text" | "file" | "system";
+  reply_to: string | null;
+  file_info: FileInfo | null;
+  created_at: string;
+  edited_at: string | null;
+}
+
+// --- Chat IPC Commands (Phase 4) ---
+
+export async function sendMessage(
+  channelId: string,
+  content: string,
+  replyTo?: string
+): Promise<ChatMessage> {
+  return invoke("send_message", {
+    channelId,
+    content,
+    replyTo: replyTo ?? null,
+  });
+}
+
+export async function getMessageHistory(
+  channelId: string,
+  before?: string,
+  limit?: number
+): Promise<ChatMessage[]> {
+  return invoke("get_message_history", {
+    channelId,
+    before: before ?? null,
+    limit: limit ?? 50,
+  });
+}
+
+export async function editMessage(
+  messageId: string,
+  content: string
+): Promise<ChatMessage> {
+  return invoke("edit_message", { messageId, content });
+}
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  return invoke("delete_message", { messageId });
+}
+
+export async function uploadFile(
+  channelId: string,
+  file: File
+): Promise<ChatMessage> {
+  const buffer = await file.arrayBuffer();
+  const data = Array.from(new Uint8Array(buffer));
+  return invoke("upload_file", {
+    channelId,
+    filename: file.name,
+    mimeType: file.type || "application/octet-stream",
+    data,
+  });
+}
+
+export async function downloadFile(fileId: string): Promise<Uint8Array> {
+  const data: number[] = await invoke("download_file", { fileId });
+  return new Uint8Array(data);
+}
+
+export async function listFiles(channelId: string): Promise<FileInfo[]> {
+  return invoke("list_files", { channelId });
+}
