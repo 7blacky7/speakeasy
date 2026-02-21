@@ -31,6 +31,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 tauri-plugin-updater = "2"
 speakeasy-core = { path = "../../crates/core" }
 speakeasy-protocol = { path = "../../crates/protocol" }
+speakeasy-audio = { path = "../../crates/audio" }
+speakeasy-plugin = { path = "../../crates/plugin" }
+cpal = "0.15"
+uuid = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

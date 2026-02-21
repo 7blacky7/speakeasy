@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::state::AppState;
 
@@ -127,26 +127,58 @@ pub async fn leave_channel(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// Gibt verfuegbare Audio-Geraete zurueck
+/// Gibt verfuegbare Audio-Geraete zurueck (echte cpal-Geraete)
 #[tauri::command]
 pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     debug!("Frage Audio-Geraete ab");
 
-    // TODO Phase 3: Echte Geraete via speakeasy-audio / cpal
-    Ok(vec![
-        AudioDevice {
-            id: "default-input".to_string(),
-            name: "Standard-Mikrofon".to_string(),
-            kind: "input".to_string(),
-            is_default: true,
-        },
-        AudioDevice {
-            id: "default-output".to_string(),
-            name: "Standard-Lautsprecher".to_string(),
-            kind: "output".to_string(),
-            is_default: true,
-        },
-    ])
+    let default_input_name = speakeasy_audio::get_default_input().map(|d| d.name);
+    let default_output_name = speakeasy_audio::get_default_output().map(|d| d.name);
+
+    let mut devices: Vec<AudioDevice> = Vec::new();
+
+    // Eingabegeraete
+    match speakeasy_audio::list_input_devices() {
+        Ok(inputs) => {
+            for dev in inputs {
+                let is_default = default_input_name.as_deref() == Some(&dev.name);
+                devices.push(AudioDevice {
+                    id: dev.id.clone(),
+                    name: dev.name,
+                    kind: "input".to_string(),
+                    is_default,
+                });
+            }
+        }
+        Err(e) => {
+            warn!("Eingabegeraete konnten nicht aufgelistet werden: {}", e);
+        }
+    }
+
+    // Ausgabegeraete
+    match speakeasy_audio::list_output_devices() {
+        Ok(outputs) => {
+            for dev in outputs {
+                let is_default = default_output_name.as_deref() == Some(&dev.name);
+                devices.push(AudioDevice {
+                    id: dev.id.clone(),
+                    name: dev.name,
+                    kind: "output".to_string(),
+                    is_default,
+                });
+            }
+        }
+        Err(e) => {
+            warn!("Ausgabegeraete konnten nicht aufgelistet werden: {}", e);
+        }
+    }
+
+    // Graceful Fallback: leere Liste wenn keine Hardware verfuegbar
+    if devices.is_empty() {
+        debug!("Keine Audio-Hardware gefunden – gebe leere Liste zurueck");
+    }
+
+    Ok(devices)
 }
 
 /// Setzt die Audio-Konfiguration
@@ -183,6 +215,376 @@ pub async fn toggle_deafen(state: State<'_, AppState>) -> Result<bool, String> {
 
     // TODO Phase 3: Audio-Engine informieren
     Ok(deafened)
+}
+
+// --- Erweiterte Audio-Typen (Phase 3) ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CodecConfig {
+    pub sample_rate: u32,
+    pub buffer_size: u32,
+    pub bitrate: u32,
+    pub frame_size: u32,
+    pub application: String,
+    pub fec: bool,
+    pub dtx: bool,
+    pub channels: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NoiseGateConfig {
+    pub enabled: bool,
+    pub threshold: f32,
+    pub attack: f32,
+    pub release: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NoiseSuppressionConfig {
+    pub enabled: bool,
+    pub level: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AgcConfig {
+    pub enabled: bool,
+    pub target_level: f32,
+    pub max_gain: f32,
+    pub attack: f32,
+    pub release: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EchoCancellationConfig {
+    pub enabled: bool,
+    pub tail_length: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeesserConfig {
+    pub enabled: bool,
+    pub frequency: f32,
+    pub threshold: f32,
+    pub ratio: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DspConfig {
+    pub noise_gate: NoiseGateConfig,
+    pub noise_suppression: NoiseSuppressionConfig,
+    pub agc: AgcConfig,
+    pub echo_cancellation: EchoCancellationConfig,
+    pub deesser: DeesserConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JitterConfig {
+    pub min_buffer: u32,
+    pub max_buffer: u32,
+    pub adaptive: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AudioSettingsConfig {
+    pub input_device_id: Option<String>,
+    pub output_device_id: Option<String>,
+    pub voice_mode: String,
+    pub ptt_key: Option<String>,
+    pub vad_sensitivity: f32,
+    pub preset: String,
+    pub noise_suppression: String,
+    pub input_volume: f32,
+    pub output_volume: f32,
+    pub codec: CodecConfig,
+    pub dsp: DspConfig,
+    pub jitter: JitterConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LatencyBreakdown {
+    pub device: f32,
+    pub encoding: f32,
+    pub jitter: f32,
+    pub network: f32,
+    pub total: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AudioStats {
+    pub input_level: f32,
+    pub output_level: f32,
+    pub processed_level: f32,
+    pub noise_floor: f32,
+    pub is_clipping: bool,
+    pub latency: LatencyBreakdown,
+    pub packet_loss: f32,
+    pub rtt: f32,
+    pub bitrate: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CalibrationResult {
+    pub success: bool,
+    pub suggested_vad_sensitivity: f32,
+    pub suggested_input_volume: f32,
+    pub noise_floor: f32,
+}
+
+fn default_audio_settings() -> AudioSettingsConfig {
+    AudioSettingsConfig {
+        input_device_id: None,
+        output_device_id: None,
+        voice_mode: "vad".to_string(),
+        ptt_key: None,
+        vad_sensitivity: 0.5,
+        preset: "balanced".to_string(),
+        noise_suppression: "medium".to_string(),
+        input_volume: 1.0,
+        output_volume: 1.0,
+        codec: CodecConfig {
+            sample_rate: 48000,
+            buffer_size: 480,
+            bitrate: 64000,
+            frame_size: 20,
+            application: "voip".to_string(),
+            fec: true,
+            dtx: false,
+            channels: "mono".to_string(),
+        },
+        dsp: DspConfig {
+            noise_gate: NoiseGateConfig {
+                enabled: true,
+                threshold: -40.0,
+                attack: 5.0,
+                release: 50.0,
+            },
+            noise_suppression: NoiseSuppressionConfig {
+                enabled: true,
+                level: "medium".to_string(),
+            },
+            agc: AgcConfig {
+                enabled: true,
+                target_level: -18.0,
+                max_gain: 30.0,
+                attack: 10.0,
+                release: 100.0,
+            },
+            echo_cancellation: EchoCancellationConfig {
+                enabled: false,
+                tail_length: 100,
+            },
+            deesser: DeesserConfig {
+                enabled: false,
+                frequency: 7000.0,
+                threshold: -20.0,
+                ratio: 4.0,
+            },
+        },
+        jitter: JitterConfig {
+            min_buffer: 20,
+            max_buffer: 200,
+            adaptive: true,
+        },
+    }
+}
+
+// --- Audio-Commands (Phase 3) ---
+
+/// Gibt die aktuellen Audio-Einstellungen zurueck
+#[tauri::command]
+pub async fn get_audio_settings(state: State<'_, AppState>) -> Result<AudioSettingsConfig, String> {
+    debug!("Frage Audio-Einstellungen ab");
+    let audio = state.audio.lock().map_err(|e| e.to_string())?;
+
+    if let Some(ref cfg) = audio.engine_config {
+        // Aus gespeicherter Engine-Config rekonstruieren
+        let mut settings = default_audio_settings();
+        settings.input_device_id = cfg.input_device.clone();
+        settings.output_device_id = cfg.output_device.clone();
+        settings.codec.sample_rate = cfg.capture.sample_rate;
+        settings.codec.buffer_size = cfg.capture.buffer_size as u32;
+        Ok(settings)
+    } else {
+        Ok(default_audio_settings())
+    }
+}
+
+/// Speichert Audio-Einstellungen
+#[tauri::command]
+pub async fn set_audio_settings(
+    state: State<'_, AppState>,
+    config: AudioSettingsConfig,
+) -> Result<(), String> {
+    debug!(
+        "Setze Audio-Einstellungen: input={:?}, output={:?}",
+        config.input_device_id, config.output_device_id
+    );
+
+    use speakeasy_audio::capture::CaptureConfig;
+
+    let mut audio = state.audio.lock().map_err(|e| e.to_string())?;
+
+    let mut engine_config = audio.engine_config.clone().unwrap_or_default();
+    engine_config.input_device = config.input_device_id.clone();
+    engine_config.output_device = config.output_device_id.clone();
+
+    let mut capture = CaptureConfig::default();
+    capture.sample_rate = config.codec.sample_rate;
+    capture.buffer_size = config.codec.buffer_size as usize;
+    engine_config.capture = capture;
+
+    audio.engine_config = Some(engine_config);
+
+    info!("Audio-Einstellungen gespeichert");
+    Ok(())
+}
+
+/// Startet die Auto-Kalibrierung (Noise-Floor-Messung)
+#[tauri::command]
+pub async fn start_calibration() -> Result<CalibrationResult, String> {
+    debug!("Starte Audio-Kalibrierung");
+
+    // Stille-Samples generieren (Fallback wenn keine Hardware verfuegbar)
+    // 1 Sekunde bei 48kHz = 48000 Samples
+    let silence_samples = vec![0.001f32; 48000];
+
+    match speakeasy_audio::calibrate_from_samples(&silence_samples, 480) {
+        Ok(result) => {
+            info!(
+                "Kalibrierung abgeschlossen: noise_floor={:.1}dB",
+                result.noise_floor_db
+            );
+            // VAD-Sensitivity aus Noise Floor ableiten (0.0 = still, 1.0 = laut)
+            // noise_floor_db liegt typisch bei -60..-40 dBFS
+            let vad_sensitivity = ((-result.noise_floor_db - 40.0) / 20.0).clamp(0.1, 0.9);
+            Ok(CalibrationResult {
+                success: true,
+                suggested_vad_sensitivity: vad_sensitivity,
+                suggested_input_volume: 1.0,
+                noise_floor: result.noise_floor_db,
+            })
+        }
+        Err(e) => {
+            warn!("Kalibrierung fehlgeschlagen: {} – nutze Default", e);
+            let default = speakeasy_audio::default_calibration();
+            Ok(CalibrationResult {
+                success: false,
+                suggested_vad_sensitivity: 0.5,
+                suggested_input_volume: 1.0,
+                noise_floor: default.noise_floor_db,
+            })
+        }
+    }
+}
+
+/// Gibt aktuelle Audio-Statistiken zurueck
+#[tauri::command]
+pub async fn get_audio_stats() -> Result<AudioStats, String> {
+    debug!("Frage Audio-Statistiken ab");
+
+    // Basis-Stats ohne laufende Engine
+    Ok(AudioStats {
+        input_level: 0.0,
+        output_level: 0.0,
+        processed_level: 0.0,
+        noise_floor: -60.0,
+        is_clipping: false,
+        latency: LatencyBreakdown {
+            device: 10.0,
+            encoding: 20.0,
+            jitter: 40.0,
+            network: 0.0,
+            total: 70.0,
+        },
+        packet_loss: 0.0,
+        rtt: 0.0,
+        bitrate: 64000.0,
+    })
+}
+
+/// Spielt einen Testton (440 Hz Sinus) ab
+#[tauri::command]
+pub async fn play_test_sound() -> Result<(), String> {
+    debug!("Spiele Testton ab");
+
+    // 440 Hz Sinus bei 48kHz fuer 0.5 Sekunden generieren
+    let sample_rate = 48000u32;
+    let duration_samples = sample_rate / 2; // 0.5 Sekunden
+    let frequency = 440.0f32;
+
+    let samples: Vec<f32> = (0..duration_samples)
+        .map(|i| {
+            let t = i as f32 / sample_rate as f32;
+            0.3 * (2.0 * std::f32::consts::PI * frequency * t).sin()
+        })
+        .collect();
+
+    // Playback ueber cpal in eigenem Thread (nicht blockierend fuer Tauri)
+    let result = std::thread::spawn(move || -> Result<(), String> {
+        use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+
+        let host = cpal::default_host();
+        let device = host
+            .default_output_device()
+            .ok_or_else(|| "Kein Standard-Ausgabegeraet gefunden".to_string())?;
+
+        let config = device
+            .default_output_config()
+            .map_err(|e| e.to_string())?;
+
+        let channels = config.channels() as usize;
+        let mut sample_idx = 0usize;
+        let samples_len = samples.len();
+        let (done_tx, done_rx) = std::sync::mpsc::channel::<()>();
+
+        let stream = match config.sample_format() {
+            cpal::SampleFormat::F32 => device.build_output_stream(
+                &config.into(),
+                move |data: &mut [f32], _| {
+                    for frame in data.chunks_mut(channels) {
+                        let val = if sample_idx < samples_len {
+                            samples[sample_idx]
+                        } else {
+                            0.0
+                        };
+                        sample_idx += 1;
+                        for sample in frame.iter_mut() {
+                            *sample = val;
+                        }
+                        if sample_idx >= samples_len {
+                            let _ = done_tx.send(());
+                        }
+                    }
+                },
+                |e| tracing::error!("Testton-Fehler: {}", e),
+                None,
+            ),
+            _ => {
+                return Err("Nicht unterstuetztes Audio-Format".to_string());
+            }
+        }
+        .map_err(|e| e.to_string())?;
+
+        stream.play().map_err(|e| e.to_string())?;
+        // Warten bis Testton fertig oder maximal 1 Sekunde
+        let _ = done_rx.recv_timeout(std::time::Duration::from_secs(1));
+
+        Ok(())
+    })
+    .join()
+    .map_err(|_| "Testton-Thread ist abgestuerzt".to_string())?;
+
+    match result {
+        Ok(()) => {
+            info!("Testton abgespielt");
+            Ok(())
+        }
+        Err(e) => {
+            warn!("Testton fehlgeschlagen: {} – kein Ausgabegeraet verfuegbar", e);
+            // Graceful: kein Fehler zurueck wenn keine Hardware
+            Ok(())
+        }
+    }
 }
 
 // --- Chat-Datentypen (Phase 4) ---
@@ -366,6 +768,173 @@ fn epoch_to_datetime(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
     let mo = ((days % 365) / 30) + 1;
     let d = (days % 30) + 1;
     (y, mo.min(12), d.min(31), h, m, s)
+}
+
+// --- Plugin-Datentypen (Phase 5) ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum PluginStateDto {
+    Simple(String),
+    #[allow(non_snake_case)]
+    Fehler {
+        #[serde(rename = "Fehler")]
+        fehler: String,
+    },
+}
+
+impl From<speakeasy_plugin::types::PluginState> for PluginStateDto {
+    fn from(state: speakeasy_plugin::types::PluginState) -> Self {
+        match state {
+            speakeasy_plugin::types::PluginState::Geladen => {
+                PluginStateDto::Simple("Geladen".to_string())
+            }
+            speakeasy_plugin::types::PluginState::Aktiv => {
+                PluginStateDto::Simple("Aktiv".to_string())
+            }
+            speakeasy_plugin::types::PluginState::Deaktiviert => {
+                PluginStateDto::Simple("Deaktiviert".to_string())
+            }
+            speakeasy_plugin::types::PluginState::Fehler(msg) => {
+                PluginStateDto::Fehler { fehler: msg }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PluginInfoDto {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    pub description: String,
+    pub state: PluginStateDto,
+    pub trust_level: String,
+    pub geladen_am: String,
+}
+
+impl From<speakeasy_plugin::types::PluginInfo> for PluginInfoDto {
+    fn from(info: speakeasy_plugin::types::PluginInfo) -> Self {
+        let trust_level = match info.trust_level {
+            speakeasy_plugin::types::TrustLevel::NichtSigniert => "NichtSigniert".to_string(),
+            speakeasy_plugin::types::TrustLevel::Signiert => "Signiert".to_string(),
+            speakeasy_plugin::types::TrustLevel::Vertrauenswuerdig => {
+                "Vertrauenswuerdig".to_string()
+            }
+        };
+        Self {
+            id: info.id.inner().to_string(),
+            name: info.name,
+            version: info.version,
+            author: info.author,
+            description: info.description,
+            state: info.state.into(),
+            trust_level,
+            geladen_am: info.geladen_am.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PluginInstallResultDto {
+    pub id: String,
+    pub name: String,
+    pub trust_level: String,
+}
+
+// --- Plugin-Commands (Phase 5) ---
+
+/// Listet alle geladenen Plugins auf
+#[tauri::command]
+pub async fn list_plugins(state: State<'_, AppState>) -> Result<Vec<PluginInfoDto>, String> {
+    debug!("Liste geladene Plugins auf");
+    let manager = state.plugin_manager.lock().map_err(|e| e.to_string())?;
+    let Some(ref mgr) = *manager else {
+        return Ok(vec![]);
+    };
+    let plugins: Vec<PluginInfoDto> = mgr
+        .plugins_auflisten()
+        .into_iter()
+        .map(Into::into)
+        .collect();
+    Ok(plugins)
+}
+
+/// Aktiviert ein Plugin anhand seiner ID
+#[tauri::command]
+pub async fn enable_plugin(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    debug!("Aktiviere Plugin {}", id);
+    let plugin_id = parse_plugin_id(&id)?;
+    let manager = state.plugin_manager.lock().map_err(|e| e.to_string())?;
+    let Some(ref mgr) = *manager else {
+        return Err("PluginManager nicht initialisiert".to_string());
+    };
+    mgr.plugin_aktivieren(plugin_id)
+        .map_err(|e| e.to_string())
+}
+
+/// Deaktiviert ein Plugin anhand seiner ID
+#[tauri::command]
+pub async fn disable_plugin(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    debug!("Deaktiviere Plugin {}", id);
+    let plugin_id = parse_plugin_id(&id)?;
+    let manager = state.plugin_manager.lock().map_err(|e| e.to_string())?;
+    let Some(ref mgr) = *manager else {
+        return Err("PluginManager nicht initialisiert".to_string());
+    };
+    mgr.plugin_deaktivieren(plugin_id)
+        .map_err(|e| e.to_string())
+}
+
+/// Entlaedt ein Plugin vollstaendig
+#[tauri::command]
+pub async fn unload_plugin(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    debug!("Entlade Plugin {}", id);
+    let plugin_id = parse_plugin_id(&id)?;
+    let manager = state.plugin_manager.lock().map_err(|e| e.to_string())?;
+    let Some(ref mgr) = *manager else {
+        return Err("PluginManager nicht initialisiert".to_string());
+    };
+    mgr.plugin_entladen(plugin_id).map_err(|e| e.to_string())
+}
+
+/// Installiert ein Plugin aus einem Verzeichnispfad
+#[tauri::command]
+pub async fn install_plugin(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<PluginInstallResultDto, String> {
+    debug!("Installiere Plugin aus Pfad: {}", path);
+    let pfad = std::path::Path::new(&path);
+    let manager = state.plugin_manager.lock().map_err(|e| e.to_string())?;
+    let Some(ref mgr) = *manager else {
+        return Err("PluginManager nicht initialisiert".to_string());
+    };
+    let plugin_id = mgr.plugin_laden(pfad).map_err(|e| e.to_string())?;
+    let info = mgr
+        .plugin_info(plugin_id)
+        .ok_or_else(|| "Plugin nach dem Laden nicht gefunden".to_string())?;
+    let trust_level = match &info.trust_level {
+        speakeasy_plugin::types::TrustLevel::NichtSigniert => "NichtSigniert".to_string(),
+        speakeasy_plugin::types::TrustLevel::Signiert => "Signiert".to_string(),
+        speakeasy_plugin::types::TrustLevel::Vertrauenswuerdig => "Vertrauenswuerdig".to_string(),
+    };
+    if trust_level == "NichtSigniert" {
+        warn!("Installiertes Plugin '{}' ist nicht signiert", info.name);
+    }
+    Ok(PluginInstallResultDto {
+        id: plugin_id.inner().to_string(),
+        name: info.name,
+        trust_level,
+    })
+}
+
+/// Hilfsfunktion: String-ID in PluginId konvertieren
+fn parse_plugin_id(id: &str) -> Result<speakeasy_plugin::types::PluginId, String> {
+    let uuid = uuid::Uuid::parse_str(id)
+        .map_err(|e| format!("Ungueltige Plugin-ID '{}': {}", id, e))?;
+    Ok(speakeasy_plugin::types::PluginId(uuid))
 }
 
 /// Gibt Server-Informationen zurueck

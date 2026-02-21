@@ -16,7 +16,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(state::AppState::default())
+        .manage(state::AppState::mit_plugins())
         .invoke_handler(tauri::generate_handler![
             commands::connect_to_server,
             commands::disconnect,
@@ -27,6 +27,12 @@ pub fn run() {
             commands::toggle_mute,
             commands::toggle_deafen,
             commands::get_server_info,
+            // Audio-Commands (Phase 3)
+            commands::get_audio_settings,
+            commands::set_audio_settings,
+            commands::start_calibration,
+            commands::get_audio_stats,
+            commands::play_test_sound,
             // Chat-Commands (Phase 4)
             commands::send_message,
             commands::get_message_history,
@@ -35,6 +41,12 @@ pub fn run() {
             commands::upload_file,
             commands::download_file,
             commands::list_files,
+            // Plugin-Commands (Phase 5)
+            commands::list_plugins,
+            commands::enable_plugin,
+            commands::disable_plugin,
+            commands::unload_plugin,
+            commands::install_plugin,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
