@@ -1,0 +1,46 @@
+[tools]
+rust = "stable"
+
+[tasks.build]
+description = "Server und alle Crates bauen"
+run = "cargo build --workspace"
+
+[tasks.build-release]
+description = "Produktions-Build (optimiert)"
+run = "cargo build --workspace --release"
+
+[tasks.test]
+description = "Alle Tests ausfuehren"
+run = "cargo test --workspace"
+
+[tasks.run]
+description = "Server im Entwicklungsmodus starten"
+run = "cargo run --bin speakeasy-server"
+
+[tasks.run-release]
+description = "Server im Release-Modus starten"
+run = "cargo run --bin speakeasy-server --release"
+
+[tasks.lint]
+description = "Clippy-Linter ausfuehren"
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+
+[tasks.fmt]
+description = "Code formatieren"
+run = "cargo fmt --all"
+
+[tasks.fmt-check]
+description = "Formatierung pruefen (fuer CI)"
+run = "cargo fmt --all -- --check"
+
+[tasks.doc]
+description = "Dokumentation bauen und oeffnen"
+run = "cargo doc --workspace --no-deps --open"
+
+[tasks.clean]
+description = "Build-Artefakte entfernen"
+run = "cargo clean"
+
+[tasks.check]
+description = "Schnelle Typueberpruefung ohne Linken"
+run = "cargo check --workspace"

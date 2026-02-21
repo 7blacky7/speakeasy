@@ -1,0 +1,47 @@
+[workspace]
+resolver = "2"
+members = [
+    "server",
+    "crates/core",
+    "crates/protocol",
+    "crates/db",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Moritz Kolar <moritz.kolar@gmail.com>"]
+license = "AGPL-3.0"
+repository = "https://github.com/7blacky7/speakeasy"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Logging / Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+# Serialisierung
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Fehlerbehandlung
+anyhow = "1"
+thiserror = "1"
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "1"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
