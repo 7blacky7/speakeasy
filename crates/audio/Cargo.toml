@@ -1,0 +1,34 @@
+[package]
+name = "speakeasy-audio"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Client Audio Engine fuer Speakeasy – Capture, Playback, DSP, Codec"
+
+[dependencies]
+# Audio I/O
+cpal = "0.15"
+
+# Opus Codec
+audiopus = "0.2"
+
+# Workspace Dependencies
+speakeasy-core = { path = "../core" }
+speakeasy-protocol = { path = "../protocol" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+parking_lot = { workspace = true }
+bytes = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+uuid = { workspace = true }
+
+# Lock-free Ring-Buffer fuer Audio I/O
+ringbuf = "0.4"
+# Kanal-Kommunikation fuer Audio-Thread
+crossbeam-channel = "0.5"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util", "macros"] }
