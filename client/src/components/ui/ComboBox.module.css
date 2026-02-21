@@ -1,0 +1,129 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+
+.inputRow:hover {
+  border-color: var(--color-bg-active);
+}
+
+.inputRow:focus-within,
+.inputRow.open {
+  border-color: var(--color-accent);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.08s, color 0.08s;
+}
+
+.toggleBtn:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.arrow {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  transition: transform 0.15s;
+}
+
+.arrowOpen {
+  transform: rotate(180deg);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: background-color 0.08s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.option:hover,
+.option.focused {
+  background-color: var(--color-bg-hover);
+}
+
+.option.selected {
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+.option.selected:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.empty {
+  padding: 6px 10px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  font-style: italic;
+}

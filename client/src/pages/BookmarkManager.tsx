@@ -2,6 +2,7 @@ import { createSignal, For, Show, onMount } from "solid-js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Bookmark } from "../components/ui/MenuBar";
 import { loadProfiles, type SoundProfile } from "../utils/soundProfiles";
+import CustomSelect from "../components/ui/CustomSelect";
 import styles from "./BookmarkManager.module.css";
 
 const BOOKMARKS_KEY = "speakeasy-bookmarks";
@@ -169,18 +170,17 @@ export default function BookmarkManager() {
                         />
                       </td>
                       <td>
-                        <select
-                          class={styles.editInput}
+                        <CustomSelect
                           value={editing()!.soundProfileId}
-                          onChange={(e) =>
-                            setEditing((prev) => prev ? { ...prev, soundProfileId: e.currentTarget.value } : null)
+                          options={[
+                            { value: "", label: "-- Kein Profil --" },
+                            ...soundProfiles().map(p => ({ value: p.id, label: p.name }))
+                          ]}
+                          onChange={(v) =>
+                            setEditing((prev) => prev ? { ...prev, soundProfileId: v } : null)
                           }
-                        >
-                          <option value="">-- Kein Profil --</option>
-                          <For each={soundProfiles()}>
-                            {(p) => <option value={p.id}>{p.name}</option>}
-                          </For>
-                        </select>
+                          ariaLabel="Sound-Profil"
+                        />
                       </td>
                       <td>
                         <div class={styles.actions}>

@@ -1,7 +1,8 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import type { ChannelInfo } from "../../bridge";
 import { createChannel } from "../../bridge";
 import Modal from "../ui/Modal";
+import CustomSelect from "../ui/CustomSelect";
 import styles from "./ChannelCreateDialog.module.css";
 
 interface ChannelCreateDialogProps {
@@ -180,19 +181,15 @@ export default function ChannelCreateDialog(props: ChannelCreateDialogProps) {
               <label class={styles.label} for="ch-parent">
                 Parent-Channel
               </label>
-              <select
-                id="ch-parent"
-                class={styles.select}
+              <CustomSelect
                 value={parentId()}
-                onChange={(e) => setParentId(e.currentTarget.value)}
-              >
-                <option value="">Kein Parent (Root)</option>
-                <For each={props.channels}>
-                  {(ch) => (
-                    <option value={ch.id}>{ch.name}</option>
-                  )}
-                </For>
-              </select>
+                options={[
+                  { value: "", label: "Kein Parent (Root)" },
+                  ...props.channels.map(ch => ({ value: ch.id, label: ch.name }))
+                ]}
+                onChange={setParentId}
+                ariaLabel="Parent-Channel"
+              />
             </div>
 
             {/* Channel-Typ */}

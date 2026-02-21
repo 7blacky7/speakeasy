@@ -3,6 +3,7 @@
   "identifier": "sub-windows",
   "description": "Berechtigungen fuer Sub-Fenster (Einstellungen, Admin-Panel)",
   "windows": [
+    "bookmarks",
     "settings-audio",
     "settings-plugins",
     "settings-account",

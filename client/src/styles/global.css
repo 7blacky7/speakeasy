@@ -112,6 +112,7 @@ body {
 
 button,
 input,
-a {
+a,
+select {
   -webkit-app-region: no-drag;
 }

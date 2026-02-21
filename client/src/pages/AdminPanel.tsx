@@ -8,6 +8,7 @@ import {
   type JSX,
 } from "solid-js";
 import Modal from "../components/ui/Modal";
+import CustomSelect from "../components/ui/CustomSelect";
 import {
   adminGetServer,
   adminGetClients,
@@ -456,16 +457,15 @@ function UsersTab() {
         >
           <div class={styles.fieldRow}>
             <label class={styles.label}>Ziel-Channel</label>
-            <select
-              class={styles.filterSelect}
+            <CustomSelect
               value={moveChannel()}
-              onChange={(e) => setMoveChannel(e.currentTarget.value)}
-            >
-              <option value="">-- Channel waehlen --</option>
-              <For each={channels()}>
-                {(ch) => <option value={ch.id}>{ch.name}</option>}
-              </For>
-            </select>
+              options={[
+                { value: "", label: "-- Channel wählen --" },
+                ...channels().map(ch => ({ value: ch.id, label: ch.name }))
+              ]}
+              onChange={setMoveChannel}
+              ariaLabel="Ziel-Channel"
+            />
           </div>
           <Show when={actionError()}>
             <span class={styles.errorText}>{actionError()}</span>
@@ -762,21 +762,22 @@ function AuditTab() {
       </Show>
 
       <div class={styles.toolbar}>
-        <select
-          class={styles.filterSelect}
+        <CustomSelect
           value={filter()}
-          onChange={(e) => handleFilterChange(e.currentTarget.value)}
-        >
-          <option value="">Alle Aktionen</option>
-          <option value="server.start">Server Start</option>
-          <option value="client.gekickt">Client Kick</option>
-          <option value="client.gebannt">Client Ban</option>
-          <option value="kanal.erstellt">Channel erstellt</option>
-          <option value="kanal.bearbeitet">Channel bearbeitet</option>
-          <option value="kanal.geloescht">Channel geloescht</option>
-          <option value="berechtigung.gesetzt">Berechtigung gesetzt</option>
-          <option value="datei.geloescht">Datei geloescht</option>
-        </select>
+          options={[
+            { value: "", label: "Alle Aktionen" },
+            { value: "server.start", label: "Server Start" },
+            { value: "client.gekickt", label: "Client Kick" },
+            { value: "client.gebannt", label: "Client Ban" },
+            { value: "kanal.erstellt", label: "Channel erstellt" },
+            { value: "kanal.bearbeitet", label: "Channel bearbeitet" },
+            { value: "kanal.geloescht", label: "Channel geloescht" },
+            { value: "berechtigung.gesetzt", label: "Berechtigung gesetzt" },
+            { value: "datei.geloescht", label: "Datei geloescht" },
+          ]}
+          onChange={handleFilterChange}
+          ariaLabel="Aktionen filtern"
+        />
         <div class={styles.toolbarRight}>
           <button class={styles.actionBtn} onClick={load}>
             Aktualisieren

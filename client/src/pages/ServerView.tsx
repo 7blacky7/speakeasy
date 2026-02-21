@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
 import { useParams, useNavigate } from "@solidjs/router";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { getServerInfo, joinChannel, disconnect, getCurrentUsername, type ChannelInfo } from "../bridge";
+import { getServerInfo, joinChannel, disconnect, connectToServer, getCurrentUsername, type ChannelInfo } from "../bridge";
 import ChannelTree, { buildChannelTree, type ChannelNode } from "../components/server/ChannelTree";
 import ChannelInfoPanel from "../components/server/ChannelInfo";
 import ServerInfoPanel from "../components/server/ServerInfoPanel";
@@ -12,6 +12,10 @@ import ChannelCreateDialog from "../components/server/ChannelCreateDialog";
 import ChannelEditDialog from "../components/server/ChannelEditDialog";
 import ChannelDeleteDialog from "../components/server/ChannelDeleteDialog";
 import ConnectDialog from "../components/server/ConnectDialog";
+import {
+  getTabs, getActiveTabId, getActiveTab, setActiveTab,
+  addTab, removeTab, updateTab, reorderTabs,
+} from "../stores/connectionStore";
 import styles from "./ServerView.module.css";
 
 type DialogState =
@@ -51,6 +55,17 @@ export default function ServerView() {
         setCurrentUsername(name);
         // Wir haben einen Username, also versuchen wir Server-Info zu laden
         setConnected(true);
+        // Store synchronisieren mit bestehender Verbindung
+        const addr = localStorage.getItem("speakeasy_last_address") || "";
+        const port = Number(localStorage.getItem("speakeasy_last_port")) || 9001;
+        const user = localStorage.getItem("speakeasy_last_username") || name;
+        updateTab(getActiveTabId(), {
+          connected: true,
+          name: addr || "Server",
+          address: addr,
+          port,
+          username: user,
+        });
       }
     } catch {
       // kein Username verfuegbar - nicht verbunden
@@ -73,6 +88,10 @@ export default function ServerView() {
       setChannels(buildChannelTree(info.channels));
       setError(null);
       setLoading(false);
+      // Tab-Name mit dem echten Servernamen aktualisieren
+      if (info.name) {
+        updateTab(getActiveTabId(), { name: info.name });
+      }
     } catch {
       setError("Server nicht erreichbar");
       setLoading(false);
@@ -177,12 +196,24 @@ export default function ServerView() {
     return rawChannels().find((c) => c.id === id) ?? null;
   };
 
+  // View-State zuruecksetzen (ohne Navigation)
+  const resetViewState = () => {
+    setServerName("");
+    setChannels([]);
+    setRawChannels([]);
+    setSelectedChannel(null);
+    setCurrentChannelId(null);
+    setCurrentUsername(null);
+    setError(null);
+    setLoading(false);
+  };
+
   // MenuBar-Handler
   const handleConnect = () => {
     setShowConnectDialog(true);
   };
 
-  const handleConnected = async () => {
+  const handleConnected = async (details?: { address: string; port: number; username: string; password?: string }) => {
     setShowConnectDialog(false);
     setConnected(true);
     try {
@@ -190,6 +221,19 @@ export default function ServerView() {
       setCurrentUsername(name);
     } catch {
       // ignorieren
+    }
+    // Store mit Verbindungsdetails aktualisieren
+    if (details) {
+      updateTab(getActiveTabId(), {
+        connected: true,
+        name: details.address === "localhost" ? `${details.address}` : details.address,
+        address: details.address,
+        port: details.port,
+        username: details.username,
+        password: details.password,
+      });
+    } else {
+      updateTab(getActiveTabId(), { connected: true });
     }
     if (!params.id) {
       navigate("/server/1");
@@ -204,32 +248,136 @@ export default function ServerView() {
     }
     if (pollTimer) clearInterval(pollTimer);
     setConnected(false);
-    setServerName("");
-    setChannels([]);
-    setRawChannels([]);
-    setSelectedChannel(null);
-    setCurrentChannelId(null);
-    setCurrentUsername(null);
-    setError(null);
-    setLoading(false);
+    resetViewState();
+    // Store aktualisieren: Tab als nicht verbunden markieren
+    updateTab(getActiveTabId(), { connected: false, name: "Nicht verbunden" });
     navigate("/");
   };
 
-  // Tab-Daten
-  const tabs = (): ServerTab[] => [
-    { id: params.id, name: serverName() || "Server", active: true },
-  ];
+  // Tab-Daten aus dem Connection-Store
+  const tabs = (): ServerTab[] =>
+    getTabs().map(t => ({
+      id: t.id,
+      name: t.name,
+      active: t.id === getActiveTabId(),
+    }));
 
-  const handleTabSelect = (_tabId: string) => {
-    // Aktuell nur ein Tab
+  const handleTabSelect = async (tabId: string) => {
+    if (tabId === getActiveTabId()) return;
+
+    // Aktuelle Verbindung trennen (Backend unterstuetzt nur 1 gleichzeitig)
+    if (connected()) {
+      try {
+        await disconnect();
+      } catch (e) {
+        console.error("Trennen beim Tab-Wechsel fehlgeschlagen:", e);
+      }
+      if (pollTimer) clearInterval(pollTimer);
+      resetViewState();
+    }
+
+    setActiveTab(tabId);
+
+    // Zum neuen Tab verbinden, falls dieser Verbindungsdaten hat
+    const tab = getActiveTab();
+    if (tab && tab.connected && tab.address && tab.username) {
+      try {
+        await connectToServer({
+          address: tab.address,
+          port: tab.port,
+          username: tab.username,
+          password: tab.password,
+        });
+        setConnected(true);
+        setCurrentUsername(tab.username);
+        if (!params.id) navigate("/server/1");
+      } catch (e) {
+        console.error("Verbinden beim Tab-Wechsel fehlgeschlagen:", e);
+        updateTab(tabId, { connected: false });
+        setConnected(false);
+      }
+    } else {
+      setConnected(false);
+    }
   };
 
-  const handleTabClose = (_tabId: string) => {
-    handleDisconnect();
+  const handleTabClose = async (tabId: string) => {
+    const wasActive = tabId === getActiveTabId();
+
+    // Wenn der geschlossene Tab gerade verbunden und aktiv ist: trennen
+    if (wasActive && connected()) {
+      try {
+        await disconnect();
+      } catch (e) {
+        console.error("Trennen beim Tab-Schliessen fehlgeschlagen:", e);
+      }
+      if (pollTimer) clearInterval(pollTimer);
+      resetViewState();
+    }
+
+    removeTab(tabId);
+
+    // Wenn der aktive Tab geschlossen wurde, zum neuen aktiven Tab wechseln
+    if (wasActive) {
+      const newActive = getActiveTab();
+      if (newActive && newActive.connected && newActive.address && newActive.username) {
+        try {
+          await connectToServer({
+            address: newActive.address,
+            port: newActive.port,
+            username: newActive.username,
+            password: newActive.password,
+          });
+          setConnected(true);
+          setCurrentUsername(newActive.username);
+        } catch {
+          updateTab(newActive.id, { connected: false });
+          setConnected(false);
+        }
+      } else {
+        setConnected(false);
+      }
+    }
   };
 
   const handleNewTab = () => {
+    const newId = crypto.randomUUID();
+    addTab({
+      id: newId,
+      name: "Nicht verbunden",
+      address: "",
+      port: 9001,
+      username: "",
+      connected: false,
+    });
+    // Sofort zum neuen Tab wechseln (trennt aktive Verbindung)
+    handleTabSelect(newId);
     setShowConnectDialog(true);
+  };
+
+  const handleTabsReorder = (reordered: ServerTab[]) => {
+    reorderTabs(reordered.map(t => t.id));
+  };
+
+  const handleCloseOtherTabs = async (keepTabId: string) => {
+    const toClose = getTabs().filter(t => t.id !== keepTabId);
+    for (const t of toClose) {
+      // Nur den aktiven Tab muss tatsaechlich getrennt werden
+      if (t.id === getActiveTabId() && connected()) {
+        try {
+          await disconnect();
+        } catch (e) {
+          console.error("Trennen fehlgeschlagen:", e);
+        }
+        if (pollTimer) clearInterval(pollTimer);
+        resetViewState();
+      }
+      removeTab(t.id);
+    }
+    // Sicherstellen dass der behaltene Tab aktiv ist
+    if (getActiveTabId() !== keepTabId) {
+      await handleTabSelect(keepTabId);
+    }
   };
 
   // Admin-Navigation als separates Fenster
@@ -274,14 +422,14 @@ export default function ServerView() {
       />
 
       {/* Tab-Leiste - IMMER sichtbar */}
-      <Show when={connected()}>
-        <TabBar
-          tabs={tabs()}
-          onTabSelect={handleTabSelect}
-          onTabClose={handleTabClose}
-          onNewTab={handleNewTab}
-        />
-      </Show>
+      <TabBar
+        tabs={tabs()}
+        onTabSelect={handleTabSelect}
+        onTabClose={handleTabClose}
+        onNewTab={handleNewTab}
+        onTabsReorder={handleTabsReorder}
+        onCloseOtherTabs={handleCloseOtherTabs}
+      />
 
       {/* Nicht verbunden: Hinweis */}
       <Show when={!connected()}>

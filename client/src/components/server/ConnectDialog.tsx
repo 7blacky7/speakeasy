@@ -1,6 +1,8 @@
 import { createSignal, Show } from "solid-js";
 import { connectToServer, clearForcePasswordChange } from "../../bridge";
+import { loadHistory, saveConnection, findEntry } from "../../utils/connectionHistory";
 import ForcePasswordChangeDialog from "./ForcePasswordChangeDialog";
+import ComboBox from "../ui/ComboBox";
 import Modal from "../ui/Modal";
 import styles from "./ConnectDialog.module.css";
 
@@ -10,10 +12,12 @@ const STORAGE_KEY_USERNAME = "speakeasy_last_username";
 
 interface ConnectDialogProps {
   onClose: () => void;
-  onConnected: () => void;
+  onConnected: (details?: { address: string; port: number; username: string; password?: string }) => void;
 }
 
 export default function ConnectDialog(props: ConnectDialogProps) {
+  const history = loadHistory();
+
   const [address, setAddress] = createSignal(
     localStorage.getItem(STORAGE_KEY_ADDRESS) || "localhost"
   );
@@ -46,10 +50,12 @@ export default function ConnectDialog(props: ConnectDialogProps) {
       localStorage.setItem(STORAGE_KEY_ADDRESS, address());
       localStorage.setItem(STORAGE_KEY_PORT, String(port()));
       localStorage.setItem(STORAGE_KEY_USERNAME, username());
+      saveConnection(address(), port(), username());
+      const details = { address: address(), port: port(), username: username(), password: password() || undefined };
       if (result.must_change_password) {
         setShowPasswordChange(true);
       } else {
-        props.onConnected();
+        props.onConnected(details);
       }
     } catch (err) {
       setError(String(err));
@@ -61,7 +67,7 @@ export default function ConnectDialog(props: ConnectDialogProps) {
   async function handlePasswordChanged() {
     await clearForcePasswordChange();
     setShowPasswordChange(false);
-    props.onConnected();
+    props.onConnected({ address: address(), port: port(), username: username(), password: password() || undefined });
   }
 
   const actions = (
@@ -100,15 +106,19 @@ export default function ConnectDialog(props: ConnectDialogProps) {
               <label class={styles.label} for="cd-address">
                 Adresse
               </label>
-              <input
-                id="cd-address"
-                type="text"
-                class={styles.input}
+              <ComboBox
                 value={address()}
-                onInput={(e) => setAddress(e.currentTarget.value)}
-                placeholder="z.B. localhost oder 192.168.1.1"
-                disabled={connecting()}
-                autofocus
+                suggestions={history.map((e) => e.address)}
+                onChange={setAddress}
+                onSelect={(addr) => {
+                  const entry = findEntry(addr);
+                  if (entry) {
+                    setPort(entry.port);
+                    setUsername(entry.username);
+                  }
+                }}
+                placeholder="Serveradresse"
+                ariaLabel="Server-Adresse"
               />
             </div>
             <div class={`${styles.field} ${styles.portField}`}>
