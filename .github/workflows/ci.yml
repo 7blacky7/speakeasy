@@ -11,7 +11,7 @@ jobs:
     name: Server – Rust Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: System-Abhängigkeiten installieren
         run: |
@@ -42,7 +42,7 @@ jobs:
     name: Client – SolidJS Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: pnpm installieren
         uses: pnpm/action-setup@v4

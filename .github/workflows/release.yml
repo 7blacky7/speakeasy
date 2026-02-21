@@ -15,7 +15,7 @@ jobs:
     outputs:
       release_id: ${{ steps.create.outputs.id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Release erstellen (Draft)
         id: create
@@ -30,7 +30,7 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Docker Buildx einrichten
         uses: docker/setup-buildx-action@v3
@@ -68,7 +68,7 @@ jobs:
             target: macos
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Rust Toolchain installieren
         uses: dtolnay/rust-toolchain@stable
