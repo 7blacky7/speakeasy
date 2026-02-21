@@ -21,6 +21,12 @@ pub struct ServerConfig {
     pub audio: AudioEinstellungen,
     /// Logging-Einstellungen
     pub logging: LoggingEinstellungen,
+    /// Commander-Einstellungen (REST, TCP/TLS, gRPC)
+    pub commander: CommanderEinstellungen,
+    /// Observability-Einstellungen (Metriken, Health)
+    pub observability: ObservabilityEinstellungen,
+    /// Plugin-Einstellungen
+    pub plugins: PluginEinstellungen,
 }
 
 /// Allgemeine Server-Einstellungen
@@ -148,6 +154,69 @@ impl Default for LoggingEinstellungen {
     }
 }
 
+/// Commander-Einstellungen (REST, TCP/TLS, gRPC Verwaltungsschnittstellen)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CommanderEinstellungen {
+    /// Port fuer die REST-API (Standard: 8080)
+    pub rest_port: u16,
+    /// Port fuer TCP/TLS ServerQuery (Standard: 10011)
+    pub tcp_port: u16,
+    /// Maximale TCP-Verbindungen
+    pub tcp_max_verbindungen: usize,
+    /// CORS-Origins fuer REST (leer = alle erlaubt)
+    pub cors_origins: Vec<String>,
+}
+
+impl Default for CommanderEinstellungen {
+    fn default() -> Self {
+        Self {
+            rest_port: 8080,
+            tcp_port: 10011,
+            tcp_max_verbindungen: 100,
+            cors_origins: vec![],
+        }
+    }
+}
+
+/// Observability-Einstellungen (Metriken + Health-Check)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ObservabilityEinstellungen {
+    /// Aktiviert den Observability-Server
+    pub aktiviert: bool,
+    /// Port fuer Metriken und Health (Standard: 9300)
+    pub port: u16,
+}
+
+impl Default for ObservabilityEinstellungen {
+    fn default() -> Self {
+        Self {
+            aktiviert: true,
+            port: 9300,
+        }
+    }
+}
+
+/// Plugin-Einstellungen
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PluginEinstellungen {
+    /// Aktiviert das Plugin-System
+    pub aktiviert: bool,
+    /// Verzeichnis fuer Plugin-Dateien (optional)
+    pub verzeichnis: Option<String>,
+}
+
+impl Default for PluginEinstellungen {
+    fn default() -> Self {
+        Self {
+            aktiviert: false,
+            verzeichnis: None,
+        }
+    }
+}
+
 impl ServerConfig {
     /// Laedt die Konfiguration aus einer TOML-Datei.
     /// Gibt die Standardkonfiguration zurueck wenn die Datei nicht existiert.
@@ -179,6 +248,26 @@ impl ServerConfig {
     /// Gibt die vollstaendige Bind-Adresse fuer UDP zurueck
     pub fn udp_bind_adresse(&self) -> String {
         format!("{}:{}", self.netzwerk.bind_adresse, self.netzwerk.udp_port)
+    }
+
+    /// Gibt die Bind-Adresse fuer den Commander REST-Server zurueck
+    pub fn commander_rest_bind_adresse(&self) -> String {
+        format!("{}:{}", self.netzwerk.bind_adresse, self.commander.rest_port)
+    }
+
+    /// Gibt die Bind-Adresse fuer den Commander TCP/TLS-Server zurueck
+    pub fn commander_tcp_bind_adresse(&self) -> String {
+        format!("{}:{}", self.netzwerk.bind_adresse, self.commander.tcp_port)
+    }
+
+    /// Gibt die Bind-Adresse fuer den gRPC-Server zurueck
+    pub fn grpc_bind_adresse(&self) -> String {
+        format!("{}:{}", self.netzwerk.bind_adresse, self.netzwerk.grpc_port)
+    }
+
+    /// Gibt die Bind-Adresse fuer den Observability-Server zurueck
+    pub fn observability_bind_adresse(&self) -> String {
+        format!("{}:{}", self.netzwerk.bind_adresse, self.observability.port)
     }
 }
 

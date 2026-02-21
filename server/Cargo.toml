@@ -17,6 +17,14 @@ speakeasy-core = { path = "../crates/core" }
 speakeasy-protocol = { path = "../crates/protocol" }
 speakeasy-db = { path = "../crates/db" }
 speakeasy-auth = { path = "../crates/auth" }
+speakeasy-voice = { path = "../crates/voice" }
+speakeasy-signaling = { path = "../crates/signaling" }
+speakeasy-commander = { path = "../crates/commander" }
+speakeasy-chat = { path = "../crates/chat" }
+speakeasy-plugin = { path = "../crates/plugin" }
+speakeasy-crypto = { path = "../crates/crypto" }
+speakeasy-observability = { path = "../crates/observability" }
+speakeasy-audio = { path = "../crates/audio" }
 
 tokio.workspace = true
 tracing.workspace = true
@@ -28,3 +36,8 @@ anyhow.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+
+# TLS fuer Commander TCP
+tokio-rustls.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
