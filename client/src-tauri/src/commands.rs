@@ -141,6 +141,13 @@ pub async fn clear_force_password_change(state: State<'_, AppState>) -> Result<(
     Ok(())
 }
 
+/// Gibt den Benutzernamen des aktuell angemeldeten Benutzers zurueck
+#[tauri::command]
+pub async fn get_current_username(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    let conn = state.connection.lock().map_err(|e| e.to_string())?;
+    Ok(conn.username.clone())
+}
+
 /// Trennt die Verbindung zum Server und stoppt die Voice-Pipeline
 #[tauri::command]
 pub async fn disconnect(state: State<'_, AppState>) -> Result<(), String> {

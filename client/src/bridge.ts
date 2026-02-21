@@ -186,6 +186,10 @@ export async function getMustChangePassword(): Promise<boolean> {
   return invoke("get_must_change_password");
 }
 
+export async function getCurrentUsername(): Promise<string | null> {
+  return invoke("get_current_username");
+}
+
 export async function clearForcePasswordChange(): Promise<void> {
   return invoke("clear_force_password_change");
 }

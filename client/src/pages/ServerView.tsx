@@ -1,6 +1,7 @@
-import { createSignal, createEffect, onCleanup, Show } from "solid-js";
+import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
 import { useParams, useNavigate } from "@solidjs/router";
-import { getServerInfo, joinChannel, disconnect, type ChannelInfo } from "../bridge";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { getServerInfo, joinChannel, disconnect, getCurrentUsername, type ChannelInfo } from "../bridge";
 import ChannelTree, { buildChannelTree, type ChannelNode } from "../components/server/ChannelTree";
 import ChannelInfoPanel from "../components/server/ChannelInfo";
 import ServerInfoPanel from "../components/server/ServerInfoPanel";
@@ -37,6 +38,16 @@ export default function ServerView() {
   const [loading, setLoading] = createSignal(true);
   const [dialog, setDialog] = createSignal<DialogState>({ type: "none" });
   const [infoPanelMode, setInfoPanelMode] = createSignal<InfoPanelMode>("server");
+  const [currentUsername, setCurrentUsername] = createSignal<string | null>(null);
+
+  onMount(async () => {
+    try {
+      const name = await getCurrentUsername();
+      setCurrentUsername(name);
+    } catch {
+      // kein Username verfuegbar
+    }
+  });
 
   // Server-Info polling (alle 4 Sekunden)
   let pollTimer: number | undefined;
@@ -180,13 +191,30 @@ export default function ServerView() {
     navigate("/");
   };
 
-  // Admin-Navigation (Platzhalter)
+  // Admin-Navigation als separates Fenster
+  const openAdminWindow = async () => {
+    const label = "admin";
+    const existing = await WebviewWindow.getByLabel(label);
+    if (existing) {
+      await existing.setFocus();
+      return;
+    }
+    new WebviewWindow(label, {
+      url: "/admin",
+      title: "Server-Verwaltung",
+      width: 950,
+      height: 700,
+      resizable: true,
+      center: true,
+    });
+  };
+
   const handlePermissions = () => {
-    navigate("/admin");
+    openAdminWindow();
   };
 
   const handleAuditLog = () => {
-    navigate("/admin");
+    openAdminWindow();
   };
 
   return (
@@ -216,6 +244,7 @@ export default function ServerView() {
                 channels={channels()}
                 currentChannelId={currentChannelId()}
                 currentUserId={null}
+                currentUsername={currentUsername()}
                 onChannelJoin={handleChannelJoin}
                 onChannelSelect={handleChannelSelect}
                 onChannelEdit={handleChannelEdit}
@@ -225,7 +254,7 @@ export default function ServerView() {
                 onlineClients={onlineClients()}
                 maxClients={maxClients()}
                 onServerClick={handleServerClick}
-                onServerEdit={handleServerClick}
+                onServerEdit={() => openAdminWindow()}
                 onChannelCreate={handleChannelCreate}
                 onPermissions={handlePermissions}
                 onAuditLog={handleAuditLog}

@@ -60,6 +60,8 @@ pub fn run() {
             // Erster-Start-Erlebnis Commands (Phase 8.6)
             commands::get_must_change_password,
             commands::clear_force_password_change,
+            // Account-Sichtbarkeit (Phase 9.2)
+            commands::get_current_username,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

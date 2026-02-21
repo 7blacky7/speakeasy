@@ -15,6 +15,7 @@ interface ChannelTreeProps {
   channels: ChannelNode[];
   currentChannelId: string | null;
   currentUserId: string | null;
+  currentUsername?: string | null;
   onChannelJoin: (channelId: string) => void;
   onChannelSelect: (channel: ChannelNode) => void;
   onChannelEdit?: (channelId: string) => void;
@@ -121,6 +122,7 @@ export default function ChannelTree(props: ChannelTreeProps) {
               depth={props.serverName ? 1 : 0}
               currentChannelId={props.currentChannelId}
               currentUserId={props.currentUserId}
+              currentUsername={props.currentUsername}
               onChannelJoin={props.onChannelJoin}
               onChannelSelect={props.onChannelSelect}
               onChannelEdit={props.onChannelEdit}
@@ -156,6 +158,7 @@ interface ChannelBranchProps {
   depth: number;
   currentChannelId: string | null;
   currentUserId: string | null;
+  currentUsername?: string | null;
   onChannelJoin: (channelId: string) => void;
   onChannelSelect: (channel: ChannelNode) => void;
   onChannelEdit?: (channelId: string) => void;
@@ -256,7 +259,10 @@ function ChannelBranch(props: ChannelBranchProps) {
             <ClientEntry
               client={client}
               depth={props.depth + 1}
-              isSelf={client.id === props.currentUserId}
+              isSelf={
+                (props.currentUserId !== null && client.id === props.currentUserId) ||
+                (!!props.currentUsername && client.username === props.currentUsername)
+              }
               showMenu={props.showMenu}
               onMessage={props.onUserMessage}
               onPoke={props.onUserPoke}
@@ -275,6 +281,7 @@ function ChannelBranch(props: ChannelBranchProps) {
               depth={props.depth + 1}
               currentChannelId={props.currentChannelId}
               currentUserId={props.currentUserId}
+              currentUsername={props.currentUsername}
               onChannelJoin={props.onChannelJoin}
               onChannelSelect={props.onChannelSelect}
               onChannelEdit={props.onChannelEdit}

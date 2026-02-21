@@ -1,6 +1,6 @@
-import { createSignal } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { toggleMute, toggleDeafen, disconnect } from "../bridge";
+import { toggleMute, toggleDeafen, disconnect, getCurrentUsername } from "../bridge";
 import styles from "./Statusbar.module.css";
 
 export default function Statusbar() {
@@ -8,7 +8,17 @@ export default function Statusbar() {
   const [deafened, setDeafened] = createSignal(false);
   const [away, setAway] = createSignal(false);
   const [connected] = createSignal(true);
+  const [username, setUsername] = createSignal<string | null>(null);
   const navigate = useNavigate();
+
+  onMount(async () => {
+    try {
+      const name = await getCurrentUsername();
+      setUsername(name);
+    } catch {
+      // kein Username verfuegbar
+    }
+  });
 
   async function handleToggleMute() {
     try {
@@ -48,7 +58,7 @@ export default function Statusbar() {
         <span
           class={`${styles.statusDot} ${connected() ? styles.online : styles.offline}`}
         />
-        <span class={styles.username}>Benutzer</span>
+        <span class={styles.username}>{username() ?? "Benutzer"}</span>
       </div>
 
       {/* Audio-Controls */}

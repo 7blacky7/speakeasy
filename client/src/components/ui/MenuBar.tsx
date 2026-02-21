@@ -1,6 +1,24 @@
 import { createSignal, For, Show, onMount, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import styles from "./MenuBar.module.css";
+
+async function openSettingsWindow(route: string, title: string, width: number, height: number) {
+  const label = route.replace(/\//g, "-").replace(/^-/, "");
+  const existing = await WebviewWindow.getByLabel(label);
+  if (existing) {
+    await existing.setFocus();
+    return;
+  }
+  new WebviewWindow(label, {
+    url: route,
+    title,
+    width,
+    height,
+    resizable: true,
+    center: true,
+  });
+}
 
 export interface Bookmark {
   name: string;
@@ -164,19 +182,19 @@ export default function MenuBar(props: MenuBarProps) {
           <div class={styles.dropdown}>
             <button
               class={styles.dropdownItem}
-              onClick={() => closeAndAction(() => navigate("/settings/audio"))}
+              onClick={() => closeAndAction(() => openSettingsWindow("/settings/audio", "Audio-Einstellungen", 750, 650))}
             >
               <span class={styles.dropdownLabel}>Sound</span>
             </button>
             <button
               class={styles.dropdownItem}
-              onClick={() => closeAndAction(() => navigate("/settings/plugins"))}
+              onClick={() => closeAndAction(() => openSettingsWindow("/settings/plugins", "Plugins", 700, 500))}
             >
               <span class={styles.dropdownLabel}>Plugins</span>
             </button>
             <button
               class={styles.dropdownItem}
-              onClick={() => closeAndAction(() => navigate("/settings/account"))}
+              onClick={() => closeAndAction(() => openSettingsWindow("/settings/account", "Account", 550, 450))}
             >
               <span class={styles.dropdownLabel}>Account</span>
             </button>
