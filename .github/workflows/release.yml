@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: GitHub Release anlegen
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release erstellen (Draft)
+        id: create
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          body_path: .github/RELEASE_TEMPLATE.md
+
+  build-server-docker:
+    name: Server – Docker Image bauen und pushen
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker Buildx einrichten
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Hub Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker Image bauen und pushen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            speakeasy/server:latest
+            speakeasy/server:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-client:
+    name: Client – Tauri Build (${{ matrix.target }})
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            target: linux
+          - platform: windows-latest
+            target: windows
+          - platform: macos-latest
+            target: macos
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust Toolchain installieren
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+
+      - name: pnpm installieren
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Linux-Abhängigkeiten installieren
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libasound2-dev \
+            libopus-dev
+
+      - name: Client-Abhängigkeiten installieren
+        run: cd client && pnpm install
+
+      - name: Tauri bauen
+        run: cd client && pnpm tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Linux-Artefakte hochladen
+        if: matrix.target == 'linux'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            client/src-tauri/target/release/bundle/deb/*.deb
+            client/src-tauri/target/release/bundle/rpm/*.rpm
+            client/src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Windows-Artefakte hochladen
+        if: matrix.target == 'windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            client/src-tauri/target/release/bundle/msi/*.msi
+            client/src-tauri/target/release/bundle/nsis/*.exe
+
+      - name: macOS-Artefakte hochladen
+        if: matrix.target == 'macos'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            client/src-tauri/target/release/bundle/dmg/*.dmg
+
+  publish-release:
+    name: Release veröffentlichen
+    needs: [build-server-docker, build-client]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release aus Draft veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false

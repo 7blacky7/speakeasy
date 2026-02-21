@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  server-test:
+    name: Server – Rust Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust Toolchain installieren
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --workspace
+
+      - name: Tests
+        run: cargo test --workspace
+
+      - name: Clippy (Warnungen als Fehler)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Format-Prüfung
+        run: cargo fmt --all -- --check
+
+  client-build:
+    name: Client – SolidJS Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pnpm installieren
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Client-Abhängigkeiten installieren
+        run: cd client && pnpm install
+
+      - name: Client bauen
+        run: cd client && pnpm run build
