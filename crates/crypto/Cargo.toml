@@ -1,0 +1,49 @@
+[package]
+name = "speakeasy-crypto"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "E2E Verschluesselung und DTLS-Subsystem fuer Speakeasy"
+
+[dependencies]
+speakeasy-core = { path = "../core" }
+speakeasy-protocol = { path = "../protocol" }
+
+# Kryptografie (ring fuer systemnahe Primitiven)
+ring = "0.17"
+
+# Hochniveau-Krypto-Crates
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+
+# Zertifikats-Generierung (Dev/Test)
+rcgen = "0.13"
+
+# TLS-Wrapper
+rustls.workspace = true
+rustls-pemfile.workspace = true
+tokio-rustls.workspace = true
+webpki-roots.workspace = true
+
+# Workspace-Abhaengigkeiten
+tokio.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+rand.workspace = true
+base64.workspace = true
+parking_lot.workspace = true
+dashmap.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
