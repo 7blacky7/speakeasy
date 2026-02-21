@@ -317,7 +317,71 @@ pub async fn leave_channel(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// Gibt verfuegbare Audio-Geraete zurueck (echte cpal-Geraete)
+/// PulseAudio/PipeWire-Quellen als zusaetzliche Geraete abrufen
+fn get_pulse_sources() -> Vec<(String, String)> {
+    let output = std::process::Command::new("pactl")
+        .args(["list", "sources", "short"])
+        .output();
+    match output {
+        Ok(out) => {
+            let text = String::from_utf8_lossy(&out.stdout);
+            text.lines()
+                .filter_map(|line| {
+                    let parts: Vec<&str> = line.split('\t').collect();
+                    if parts.len() >= 2 {
+                        let name = parts[1].to_string();
+                        // Monitor-Quellen ausfiltern (sind Output-Monitore, keine echten Inputs)
+                        if name.contains(".monitor") {
+                            return None;
+                        }
+                        // Menschenlesbaren Namen ableiten
+                        let display = name
+                            .replace("alsa_input.", "")
+                            .replace("alsa_output.", "")
+                            .replace("easyeffects_", "EasyEffects ")
+                            .replace('_', " ")
+                            .replace('.', " ");
+                        Some((name, display))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+        Err(_) => vec![],
+    }
+}
+
+/// PulseAudio/PipeWire-Senken als zusaetzliche Ausgabegeraete abrufen
+fn get_pulse_sinks() -> Vec<(String, String)> {
+    let output = std::process::Command::new("pactl")
+        .args(["list", "sinks", "short"])
+        .output();
+    match output {
+        Ok(out) => {
+            let text = String::from_utf8_lossy(&out.stdout);
+            text.lines()
+                .filter_map(|line| {
+                    let parts: Vec<&str> = line.split('\t').collect();
+                    if parts.len() >= 2 {
+                        let name = parts[1].to_string();
+                        let display = name
+                            .replace("alsa_output.", "")
+                            .replace("easyeffects_", "EasyEffects ")
+                            .replace('_', " ")
+                            .replace('.', " ");
+                        Some((name, display))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+        Err(_) => vec![],
+    }
+}
+
+/// Gibt verfuegbare Audio-Geraete zurueck (cpal + PulseAudio/PipeWire)
 #[tauri::command]
 pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     debug!("Frage Audio-Geraete ab");
@@ -360,6 +424,37 @@ pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
         }
         Err(e) => {
             warn!("Ausgabegeraete konnten nicht aufgelistet werden: {}", e);
+        }
+    }
+
+    // PulseAudio/PipeWire-Quellen ergaenzen (EasyEffects, virtuelle Geraete etc.)
+    let existing_input_ids: Vec<String> = devices.iter()
+        .filter(|d| d.kind == "input")
+        .map(|d| d.id.clone())
+        .collect();
+    for (pa_id, pa_name) in get_pulse_sources() {
+        if !existing_input_ids.contains(&pa_id) {
+            devices.push(AudioDevice {
+                id: pa_id,
+                name: pa_name,
+                kind: "input".to_string(),
+                is_default: false,
+            });
+        }
+    }
+
+    let existing_output_ids: Vec<String> = devices.iter()
+        .filter(|d| d.kind == "output")
+        .map(|d| d.id.clone())
+        .collect();
+    for (pa_id, pa_name) in get_pulse_sinks() {
+        if !existing_output_ids.contains(&pa_id) {
+            devices.push(AudioDevice {
+                id: pa_id,
+                name: pa_name,
+                kind: "output".to_string(),
+                is_default: false,
+            });
         }
     }
 
@@ -431,6 +526,7 @@ pub async fn toggle_deafen(state: State<'_, AppState>) -> Result<bool, String> {
 // --- Erweiterte Audio-Typen (Phase 3) ---
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CodecConfig {
     pub sample_rate: u32,
     pub buffer_size: u32,
@@ -480,6 +576,7 @@ pub struct DeesserConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DspConfig {
     pub noise_gate: NoiseGateConfig,
     pub noise_suppression: NoiseSuppressionConfig,
@@ -489,6 +586,7 @@ pub struct DspConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct JitterConfig {
     pub min_buffer: u32,
     pub max_buffer: u32,
@@ -496,6 +594,7 @@ pub struct JitterConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioSettingsConfig {
     pub input_device_id: Option<String>,
     pub output_device_id: Option<String>,
@@ -512,6 +611,7 @@ pub struct AudioSettingsConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct LatencyBreakdown {
     pub device: f32,
     pub encoding: f32,
@@ -521,6 +621,7 @@ pub struct LatencyBreakdown {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioStats {
     pub input_level: f32,
     pub output_level: f32,
@@ -534,6 +635,7 @@ pub struct AudioStats {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CalibrationResult {
     pub success: bool,
     pub suggested_vad_sensitivity: f32,
@@ -651,38 +753,114 @@ pub async fn set_audio_settings(
 }
 
 /// Startet die Auto-Kalibrierung (Noise-Floor-Messung)
+///
+/// Nimmt 3 Sekunden Audio vom Mikrofon auf und misst den Noise Floor.
 #[tauri::command]
-pub async fn start_calibration() -> Result<CalibrationResult, String> {
-    debug!("Starte Audio-Kalibrierung");
+pub async fn start_calibration(state: State<'_, AppState>) -> Result<CalibrationResult, String> {
+    debug!("Starte Audio-Kalibrierung mit echtem Mikrofon");
 
-    // Stille-Samples generieren (Fallback wenn keine Hardware verfuegbar)
-    // 1 Sekunde bei 48kHz = 48000 Samples
-    let silence_samples = vec![0.001f32; 48000];
+    // Aktuell konfiguriertes Input-Device laden
+    let input_device_name = {
+        let audio = state.audio.lock().map_err(|e| e.to_string())?;
+        audio.engine_config.as_ref().and_then(|c| c.input_device.clone())
+    };
 
-    match speakeasy_audio::calibrate_from_samples(&silence_samples, 480) {
+    // Audio-Aufnahme in blocking Task ausfuehren (cpal ist nicht Send)
+    let recorded = tokio::task::spawn_blocking(move || -> Result<Vec<f32>, String> {
+        let device = speakeasy_audio::device::load_cpal_input_device(input_device_name.as_deref())
+            .map_err(|e| format!("Kein Mikrofon gefunden: {}", e))?;
+
+        let sample_rate = 48000u32;
+        let duration_secs = 3;
+        let total_samples = (sample_rate * duration_secs) as usize;
+        let samples = std::sync::Arc::new(std::sync::Mutex::new(Vec::with_capacity(total_samples)));
+        let samples_writer = samples.clone();
+        let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let done_writer = done.clone();
+
+        use cpal::traits::{DeviceTrait, StreamTrait};
+
+        let config = cpal::StreamConfig {
+            channels: 1,
+            sample_rate: cpal::SampleRate(sample_rate),
+            buffer_size: cpal::BufferSize::Default,
+        };
+
+        let stream = device.build_input_stream(
+            &config,
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                let mut buf = samples_writer.lock().unwrap();
+                if buf.len() < total_samples {
+                    let remaining = total_samples - buf.len();
+                    let take = data.len().min(remaining);
+                    buf.extend_from_slice(&data[..take]);
+                    if buf.len() >= total_samples {
+                        done_writer.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+            },
+            move |err| {
+                tracing::error!("Audio-Capture Fehler bei Kalibrierung: {}", err);
+            },
+            None,
+        ).map_err(|e| format!("Mikrofon konnte nicht geoeffnet werden: {}", e))?;
+
+        stream.play().map_err(|e| format!("Mikrofon-Stream konnte nicht gestartet werden: {}", e))?;
+
+        let start = std::time::Instant::now();
+        while !done.load(std::sync::atomic::Ordering::Relaxed) {
+            if start.elapsed() > std::time::Duration::from_secs(5) {
+                tracing::warn!("Kalibrierung Timeout nach 5 Sekunden");
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+
+        drop(stream);
+        let buf = samples.lock().unwrap();
+        Ok(buf.clone())
+    }).await.map_err(|e| format!("Kalibrierungs-Task fehlgeschlagen: {}", e))??;
+
+    let recorded = &recorded;
+    info!("Kalibrierung: {} Samples aufgenommen", recorded.len());
+
+    if recorded.len() < 4800 {
+        warn!("Zu wenige Samples ({}) - nutze Default-Kalibrierung", recorded.len());
+        return Ok(CalibrationResult {
+            success: false,
+            suggested_vad_sensitivity: 0.5,
+            suggested_input_volume: 1.0,
+            noise_floor: -60.0,
+        });
+    }
+
+    match speakeasy_audio::calibrate_from_samples(&recorded, 480) {
         Ok(result) => {
             info!(
-                "Kalibrierung abgeschlossen: noise_floor={:.1}dB",
-                result.noise_floor_db
+                "Kalibrierung abgeschlossen: noise_floor={:.1}dB, peak={:.1}dB",
+                result.noise_floor_db, result.peak_db
             );
-            // VAD-Sensitivity aus Noise Floor ableiten (0.0 = still, 1.0 = laut)
-            // noise_floor_db liegt typisch bei -60..-40 dBFS
             let vad_sensitivity = ((-result.noise_floor_db - 40.0) / 20.0).clamp(0.1, 0.9);
+            // Input-Volume: wenn Peak < -30dBFS, Volume erhoehen
+            let suggested_volume = if result.peak_db < -30.0 {
+                ((-result.peak_db - 6.0) / 30.0).clamp(0.5, 1.0)
+            } else {
+                1.0
+            };
             Ok(CalibrationResult {
                 success: true,
                 suggested_vad_sensitivity: vad_sensitivity,
-                suggested_input_volume: 1.0,
+                suggested_input_volume: suggested_volume,
                 noise_floor: result.noise_floor_db,
             })
         }
         Err(e) => {
             warn!("Kalibrierung fehlgeschlagen: {} – nutze Default", e);
-            let default = speakeasy_audio::default_calibration();
             Ok(CalibrationResult {
                 success: false,
                 suggested_vad_sensitivity: 0.5,
                 suggested_input_volume: 1.0,
-                noise_floor: default.noise_floor_db,
+                noise_floor: -60.0,
             })
         }
     }

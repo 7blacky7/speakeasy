@@ -98,6 +98,7 @@ pub fn load_cpal_input_device(name: Option<&str>) -> AudioResult<Device> {
             .default_input_device()
             .ok_or(AudioError::KeinStandardEingabegeraet),
         Some(n) => {
+            // Erst in cpal-Geraeten suchen
             let devices = host
                 .input_devices()
                 .map_err(|e| AudioError::StreamFehler(e.to_string()))?;
@@ -105,6 +106,24 @@ pub fn load_cpal_input_device(name: Option<&str>) -> AudioResult<Device> {
                 if let Ok(dev_name) = device.name() {
                     if dev_name.contains(n) {
                         return Ok(device);
+                    }
+                }
+            }
+            // Fallback: PulseAudio-Source per pactl setzen und "pulse" ALSA-Device nutzen
+            if n.contains("alsa_input") || n.contains("easyeffects") {
+                debug!("Setze PulseAudio Default-Source auf: {}", n);
+                let _ = std::process::Command::new("pactl")
+                    .args(["set-default-source", n])
+                    .output();
+                // "pulse" ALSA-Device laden
+                let devices2 = host
+                    .input_devices()
+                    .map_err(|e| AudioError::StreamFehler(e.to_string()))?;
+                for device in devices2 {
+                    if let Ok(dev_name) = device.name() {
+                        if dev_name == "pulse" {
+                            return Ok(device);
+                        }
                     }
                 }
             }
@@ -128,6 +147,23 @@ pub fn load_cpal_output_device(name: Option<&str>) -> AudioResult<Device> {
                 if let Ok(dev_name) = device.name() {
                     if dev_name.contains(n) {
                         return Ok(device);
+                    }
+                }
+            }
+            // Fallback: PulseAudio-Sink per pactl setzen und "pulse" ALSA-Device nutzen
+            if n.contains("alsa_output") || n.contains("easyeffects") {
+                debug!("Setze PulseAudio Default-Sink auf: {}", n);
+                let _ = std::process::Command::new("pactl")
+                    .args(["set-default-sink", n])
+                    .output();
+                let devices2 = host
+                    .output_devices()
+                    .map_err(|e| AudioError::StreamFehler(e.to_string()))?;
+                for device in devices2 {
+                    if let Ok(dev_name) = device.name() {
+                        if dev_name == "pulse" {
+                            return Ok(device);
+                        }
                     }
                 }
             }

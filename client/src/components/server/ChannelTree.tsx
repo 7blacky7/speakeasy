@@ -318,16 +318,35 @@ interface ClientEntryProps {
 function ClientEntry(props: ClientEntryProps) {
   const c = props.client;
 
-  const statusIcon = () => {
-    if (c.is_deafened) return "\u2298"; // Durchgestrichener Kreis
-    if (c.is_muted) return "\u2300"; // Durchmesser-Symbol
-    return "\u2022"; // Punkt
-  };
-
-  const statusClass = () => {
-    if (c.is_deafened) return styles.statusDeafened;
-    if (c.is_muted) return styles.statusMuted;
-    return styles.statusOnline;
+  // TS3-style Lautsprecher-SVG Icon
+  const StatusSvg = () => {
+    if (c.is_deafened) {
+      // Durchgestrichener Lautsprecher
+      return (
+        <svg viewBox="0 0 16 16" class={`${styles.clientStatusSvg} ${styles.statusDeafened}`}>
+          <path d="M2 5h2.5L8 2v12L4.5 11H2a1 1 0 01-1-1V6a1 1 0 011-1z" fill="currentColor" />
+          <line x1="10" y1="3" x2="15" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      );
+    }
+    if (c.is_muted) {
+      // Lautsprecher mit X
+      return (
+        <svg viewBox="0 0 16 16" class={`${styles.clientStatusSvg} ${styles.statusMuted}`}>
+          <path d="M2 5h2.5L8 2v12L4.5 11H2a1 1 0 01-1-1V6a1 1 0 011-1z" fill="currentColor" />
+          <line x1="11" y1="5.5" x2="15" y2="10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          <line x1="15" y1="5.5" x2="11" y2="10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      );
+    }
+    // Normal: Lautsprecher mit Schallwellen
+    return (
+      <svg viewBox="0 0 16 16" class={`${styles.clientStatusSvg} ${styles.statusOnline}`}>
+        <path d="M2 5h2.5L8 2v12L4.5 11H2a1 1 0 01-1-1V6a1 1 0 011-1z" fill="currentColor" />
+        <path d="M10.5 4.5a4.5 4.5 0 010 7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" />
+        <path d="M12.5 2.5a7.5 7.5 0 010 11" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" />
+      </svg>
+    );
   };
 
   const handleContextMenu = (e: MouseEvent) => {
@@ -349,9 +368,7 @@ function ClientEntry(props: ClientEntryProps) {
       style={{ "padding-left": `${24 + props.depth * 16}px` }}
       onContextMenu={handleContextMenu}
     >
-      <span class={`${styles.clientStatus} ${statusClass()}`}>
-        {statusIcon()}
-      </span>
+      <StatusSvg />
       <span class={styles.clientName}>
         {c.username}
         <Show when={props.isSelf}>

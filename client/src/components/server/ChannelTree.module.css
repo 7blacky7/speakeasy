@@ -109,11 +109,10 @@
   font-weight: 700;
 }
 
-/* --- Client-Status-Icon --- */
-.clientStatus {
-  width: 12px;
-  text-align: center;
-  font-size: 10px;
+/* --- Client-Status-Icon (SVG) --- */
+.clientStatusSvg {
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 

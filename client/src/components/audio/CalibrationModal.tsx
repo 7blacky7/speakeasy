@@ -80,11 +80,11 @@ export default function CalibrationModal(props: CalibrationModalProps) {
                 <div class={styles.results}>
                   <div class={styles.resultRow}>
                     <span class={styles.resultLabel}>Gerauschpegel</span>
-                    <span class={styles.resultValue}>{r().noiseFloor} dBFS</span>
+                    <span class={styles.resultValue}>{r().noiseFloor.toFixed(1)} dBFS</span>
                   </div>
                   <div class={styles.resultRow}>
-                    <span class={styles.resultLabel}>Empfohlene Eingangslauststarke</span>
-                    <span class={styles.resultValue}>{r().suggestedInputVolume}%</span>
+                    <span class={styles.resultLabel}>Empfohlene Eingangslautstaerke</span>
+                    <span class={styles.resultValue}>{Math.round(r().suggestedInputVolume * 100)}%</span>
                   </div>
                   <div class={styles.resultRow}>
                     <span class={styles.resultLabel}>Empfohlene VAD-Empfindlichkeit</span>

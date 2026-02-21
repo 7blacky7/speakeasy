@@ -102,6 +102,8 @@ export default function ServerView() {
     try {
       await joinChannel(channelId);
       setCurrentChannelId(channelId);
+      // Sofort Server-Info aktualisieren damit der Wechsel instant sichtbar ist
+      fetchServerInfo();
     } catch (e) {
       console.error("Kanal beitreten fehlgeschlagen:", e);
     }
