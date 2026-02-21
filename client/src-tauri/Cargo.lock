@@ -4340,6 +4340,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cpal",
+ "futures-util",
  "serde",
  "serde_json",
  "speakeasy-audio",
@@ -4351,6 +4352,7 @@ dependencies = [
  "tauri-plugin-updater",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
  "uuid",

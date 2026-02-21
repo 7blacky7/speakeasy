@@ -33,6 +33,8 @@ speakeasy-core = { path = "../../crates/core" }
 speakeasy-protocol = { path = "../../crates/protocol" }
 speakeasy-audio = { path = "../../crates/audio" }
 speakeasy-plugin = { path = "../../crates/plugin" }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures-util = "0.3"
 cpal = "0.15"
 uuid = { version = "1", features = ["v4"] }
 

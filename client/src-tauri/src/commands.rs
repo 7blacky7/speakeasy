@@ -2,6 +2,13 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tracing::{debug, info, warn};
 
+use speakeasy_core::types::ChannelId;
+use speakeasy_protocol::control::{
+    ChatDeleteRequest, ChatEditRequest, ChatHistoryRequest, ChatSendRequest, ControlPayload,
+    FileUploadRequest,
+};
+
+use crate::connection::ServerConnection;
 use crate::state::AppState;
 
 // --- Datentypen ---
@@ -72,13 +79,33 @@ pub async fn connect_to_server(
         if password.is_some() { "ja" } else { "nein" }
     );
 
-    let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
-    conn.connected = true;
-    conn.server_address = Some(address);
-    conn.server_port = Some(port);
-    conn.username = Some(username);
+    // TCP-Verbindung aufbauen
+    let mut server_conn = ServerConnection::connect(&address, port)
+        .await
+        .map_err(|e| format!("Verbindungsfehler: {}", e))?;
 
-    // TODO Phase 3: Echte TCP/TLS-Verbindung via speakeasy-protocol
+    // Login durchfuehren
+    let pwd = password.as_deref().unwrap_or("");
+    server_conn
+        .login(&username, pwd)
+        .await
+        .map_err(|e| format!("Login fehlgeschlagen: {}", e))?;
+
+    // Metadaten im sync ConnectionState speichern
+    {
+        let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
+        conn.connected = true;
+        conn.server_address = Some(address);
+        conn.server_port = Some(port);
+        conn.username = Some(username);
+    }
+
+    // Echte TCP-Verbindung im async Mutex speichern
+    {
+        let mut tcp = state.tcp.lock().await;
+        *tcp = Some(server_conn);
+    }
+
     Ok(())
 }
 
@@ -87,13 +114,28 @@ pub async fn connect_to_server(
 pub async fn disconnect(state: State<'_, AppState>) -> Result<(), String> {
     info!("Verbindung wird getrennt");
 
-    let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
-    conn.connected = false;
-    conn.server_address = None;
-    conn.server_port = None;
-    conn.current_channel = None;
+    // Logout und TCP-Verbindung trennen
+    {
+        let mut tcp = state.tcp.lock().await;
+        if let Some(ref mut conn) = *tcp {
+            // Logout versuchen, Fehler ignorieren (Verbindung wird trotzdem getrennt)
+            if let Err(e) = conn.logout().await {
+                warn!("Logout-Fehler (wird ignoriert): {}", e);
+            }
+            conn.disconnect().await;
+        }
+        *tcp = None;
+    }
 
-    // TODO Phase 3: Echte Trennung
+    // Metadaten zuruecksetzen
+    {
+        let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
+        conn.connected = false;
+        conn.server_address = None;
+        conn.server_port = None;
+        conn.current_channel = None;
+    }
+
     Ok(())
 }
 
@@ -105,13 +147,30 @@ pub async fn join_channel(
 ) -> Result<(), String> {
     debug!("Trete Kanal {} bei", channel_id);
 
-    let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
-    if !conn.connected {
-        return Err("Nicht mit einem Server verbunden".to_string());
+    {
+        let conn = state.connection.lock().map_err(|e| e.to_string())?;
+        if !conn.connected {
+            return Err("Nicht mit einem Server verbunden".to_string());
+        }
     }
-    conn.current_channel = Some(channel_id);
 
-    // TODO Phase 3: Kanal-Beitritt via Protokoll + Audio-Stream starten
+    // Kanal-Beitritt ueber TCP-Verbindung
+    {
+        let mut tcp = state.tcp.lock().await;
+        let conn = tcp
+            .as_mut()
+            .ok_or_else(|| "Keine TCP-Verbindung vorhanden".to_string())?;
+        conn.join_channel(&channel_id)
+            .await
+            .map_err(|e| format!("Kanal-Beitritt fehlgeschlagen: {}", e))?;
+    }
+
+    // Metadaten aktualisieren
+    {
+        let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
+        conn.current_channel = Some(channel_id);
+    }
+
     Ok(())
 }
 
@@ -120,10 +179,27 @@ pub async fn join_channel(
 pub async fn leave_channel(state: State<'_, AppState>) -> Result<(), String> {
     debug!("Verlasse aktuellen Kanal");
 
-    let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
-    conn.current_channel = None;
+    let channel_id = {
+        let conn = state.connection.lock().map_err(|e| e.to_string())?;
+        conn.current_channel.clone()
+    };
 
-    // TODO Phase 3: Kanal-Verlassen via Protokoll + Audio-Stream stoppen
+    // Kanal-Verlassen ueber TCP-Verbindung
+    if let Some(ref cid) = channel_id {
+        let mut tcp = state.tcp.lock().await;
+        if let Some(ref mut conn) = *tcp {
+            if let Err(e) = conn.leave_channel(cid).await {
+                warn!("Kanal-Verlassen fehlgeschlagen: {} (wird lokal zurueckgesetzt)", e);
+            }
+        }
+    }
+
+    // Metadaten aktualisieren
+    {
+        let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
+        conn.current_channel = None;
+    }
+
     Ok(())
 }
 
@@ -611,35 +687,82 @@ pub struct ChatMessage {
     pub edited_at: Option<String>,
 }
 
-// --- Chat-Commands (Phase 4, Stubs) ---
+// --- Chat-Commands (Phase 4, echte TCP-Implementierung) ---
 
-/// Sendet eine Text-Nachricht in einen Kanal
+/// Hilfsfunktion: parst eine Kanal-ID (UUID)
+fn parse_channel_id(channel_id: &str) -> Result<ChannelId, String> {
+    uuid::Uuid::parse_str(channel_id)
+        .map(ChannelId)
+        .map_err(|_| format!("Ungueltige Kanal-ID '{}': keine gueltige UUID", channel_id))
+}
+
+/// Konvertiert einen Unix-Timestamp (Sekunden) in ISO8601
+fn unix_timestamp_to_iso(secs: u64) -> String {
+    let (y, mo, d, h, mi, s) = epoch_to_datetime(secs);
+    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, mo, d, h, mi, s)
+}
+
+/// Sendet eine Text-Nachricht in einen Kanal via TCP
 #[tauri::command]
 pub async fn send_message(
+    state: State<'_, AppState>,
     channel_id: String,
     content: String,
     reply_to: Option<String>,
 ) -> Result<ChatMessage, String> {
     debug!("Sende Nachricht in Kanal {}", channel_id);
 
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
-    Ok(ChatMessage {
-        id: uuid_stub(),
-        channel_id,
-        sender_id: "self".to_string(),
-        sender_name: "Du".to_string(),
-        content,
-        message_type: "text".to_string(),
-        reply_to,
-        file_info: None,
-        created_at: chrono_now(),
-        edited_at: None,
-    })
+    let cid = parse_channel_id(&channel_id)?;
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChatSend(ChatSendRequest {
+            channel_id: cid,
+            content: content.clone(),
+            reply_to: reply_to.clone(),
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChatSendResponse(resp) => {
+            let sender_id = conn.user_id().unwrap_or("self").to_string();
+            drop(tcp);
+            let conn_state = state.connection.lock().map_err(|e| e.to_string())?;
+            let sender_name = conn_state.username.clone().unwrap_or_else(|| "Du".to_string());
+            drop(conn_state);
+            Ok(ChatMessage {
+                id: resp.message_id,
+                channel_id,
+                sender_id,
+                sender_name,
+                content,
+                message_type: "text".to_string(),
+                reply_to,
+                file_info: None,
+                created_at: unix_timestamp_to_iso(resp.created_at),
+                edited_at: None,
+            })
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
-/// Laedt die Nachrichten-History eines Kanals
+/// Laedt die Nachrichten-History eines Kanals via TCP
 #[tauri::command]
 pub async fn get_message_history(
+    state: State<'_, AppState>,
     channel_id: String,
     before: Option<String>,
     limit: Option<u32>,
@@ -649,44 +772,145 @@ pub async fn get_message_history(
         channel_id, before, limit
     );
 
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
-    Ok(vec![])
+    let cid = parse_channel_id(&channel_id)?;
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChatHistory(ChatHistoryRequest {
+            channel_id: cid,
+            before,
+            limit: limit.map(|l| l as i64),
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChatHistoryResponse(resp) => {
+            let nachrichten: Vec<ChatMessage> = resp
+                .messages
+                .into_iter()
+                .map(|m| ChatMessage {
+                    channel_id: m.channel_id.inner().to_string(),
+                    sender_id: m.sender_id.inner().to_string(),
+                    sender_name: m.sender_id.inner().to_string(),
+                    id: m.message_id,
+                    content: m.content,
+                    message_type: m.message_type,
+                    reply_to: m.reply_to,
+                    file_info: None,
+                    created_at: m.created_at,
+                    edited_at: m.edited_at,
+                })
+                .collect();
+            Ok(nachrichten)
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
-/// Editiert eine Nachricht
+/// Editiert eine Nachricht via TCP
 #[tauri::command]
 pub async fn edit_message(
+    state: State<'_, AppState>,
     message_id: String,
     content: String,
 ) -> Result<ChatMessage, String> {
     debug!("Editiere Nachricht {}", message_id);
 
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
-    Ok(ChatMessage {
-        id: message_id,
-        channel_id: String::new(),
-        sender_id: "self".to_string(),
-        sender_name: "Du".to_string(),
-        content,
-        message_type: "text".to_string(),
-        reply_to: None,
-        file_info: None,
-        created_at: chrono_now(),
-        edited_at: Some(chrono_now()),
-    })
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChatEdit(ChatEditRequest {
+            message_id: message_id.clone(),
+            content: content.clone(),
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChatEdit(req) => {
+            let sender_id = conn.user_id().unwrap_or("self").to_string();
+            Ok(ChatMessage {
+                id: req.message_id,
+                channel_id: String::new(),
+                sender_id,
+                sender_name: "Du".to_string(),
+                content: req.content,
+                message_type: "text".to_string(),
+                reply_to: None,
+                file_info: None,
+                created_at: chrono_now(),
+                edited_at: Some(chrono_now()),
+            })
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
-/// Loescht eine Nachricht (Soft-Delete)
+/// Loescht eine Nachricht (Soft-Delete) via TCP
 #[tauri::command]
-pub async fn delete_message(message_id: String) -> Result<(), String> {
+pub async fn delete_message(
+    state: State<'_, AppState>,
+    message_id: String,
+) -> Result<(), String> {
     debug!("Loesche Nachricht {}", message_id);
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
-    Ok(())
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::ChatDelete(ChatDeleteRequest {
+            message_id: message_id.clone(),
+        }),
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::ChatDelete(_) => {
+            debug!("Nachricht {} erfolgreich geloescht", message_id);
+            Ok(())
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
-/// Laedt eine Datei hoch und postet sie als Nachricht
+/// Initiiert einen Datei-Upload via TCP (Token-Flow)
+///
+/// Sendet FileUpload-Request, erhaelt Upload-Token zurueck.
+/// Die eigentliche Datei-Uebertragung erfolgt via HTTP an die Upload-URL.
 #[tauri::command]
 pub async fn upload_file(
+    state: State<'_, AppState>,
     channel_id: String,
     filename: String,
     mime_type: String,
@@ -699,53 +923,130 @@ pub async fn upload_file(
         channel_id
     );
 
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
-    let file_id = uuid_stub();
-    Ok(ChatMessage {
-        id: uuid_stub(),
-        channel_id,
-        sender_id: "self".to_string(),
-        sender_name: "Du".to_string(),
-        content: format!("{}:{}", file_id, filename),
-        message_type: "file".to_string(),
-        reply_to: None,
-        file_info: Some(FileInfo {
-            id: file_id,
-            filename,
-            mime_type,
-            size_bytes: data.len() as i64,
+    let cid = parse_channel_id(&channel_id)?;
+    let size_bytes = data.len() as u64;
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let upload_anfrage = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::FileUpload(FileUploadRequest {
+            channel_id: cid,
+            filename: filename.clone(),
+            size_bytes,
+            mime_type: Some(mime_type.clone()),
+            checksum: None,
         }),
-        created_at: chrono_now(),
-        edited_at: None,
-    })
+    );
+
+    let antwort = conn.send_and_receive(upload_anfrage).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::FileUploadResponse(resp) => {
+            let file_id = resp.file_id.clone();
+            let sender_id = conn.user_id().unwrap_or("self").to_string();
+            drop(tcp);
+            let conn_state = state.connection.lock().map_err(|e| e.to_string())?;
+            let sender_name = conn_state.username.clone().unwrap_or_else(|| "Du".to_string());
+            drop(conn_state);
+            info!(
+                "Upload-Token erhalten: file_id={}, url={}",
+                file_id, resp.upload_url
+            );
+            Ok(ChatMessage {
+                id: uuid::Uuid::new_v4().to_string(),
+                channel_id,
+                sender_id,
+                sender_name,
+                content: filename.clone(),
+                message_type: "file".to_string(),
+                reply_to: None,
+                file_info: Some(FileInfo {
+                    id: file_id,
+                    filename,
+                    mime_type,
+                    size_bytes: size_bytes as i64,
+                }),
+                created_at: chrono_now(),
+                edited_at: None,
+            })
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler beim Upload: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
-/// Laedt eine Datei herunter
+/// Datei-Download – gibt leere Bytes zurueck (HTTP-Download nicht implementiert)
+///
+/// Das Control-Protokoll uebertraegt keine binaeren Dateidaten direkt.
 #[tauri::command]
-pub async fn download_file(file_id: String) -> Result<Vec<u8>, String> {
+pub async fn download_file(
+    _state: State<'_, AppState>,
+    file_id: String,
+) -> Result<Vec<u8>, String> {
     debug!("Lade Datei {} herunter", file_id);
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
+    warn!(
+        "download_file: HTTP-Download noch nicht implementiert (file_id={})",
+        file_id
+    );
     Ok(vec![])
 }
 
-/// Listet Dateien in einem Kanal auf
+/// Listet Dateien in einem Kanal auf via TCP
 #[tauri::command]
-pub async fn list_files(channel_id: String) -> Result<Vec<FileInfo>, String> {
+pub async fn list_files(
+    state: State<'_, AppState>,
+    channel_id: String,
+) -> Result<Vec<FileInfo>, String> {
     debug!("Liste Dateien in Kanal {}", channel_id);
-    // TODO Phase 4: Echte Implementierung via speakeasy-chat
-    Ok(vec![])
+
+    let cid = parse_channel_id(&channel_id)?;
+
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Nicht verbunden – bitte zuerst connect_to_server aufrufen".to_string())?;
+
+    let request_id = conn.next_id();
+    let nachricht = speakeasy_protocol::control::ControlMessage::new(
+        request_id,
+        ControlPayload::FileList { channel_id: cid },
+    );
+
+    let antwort = conn.send_and_receive(nachricht).await.map_err(|e| e.to_string())?;
+
+    match antwort.payload {
+        ControlPayload::FileListResponse(resp) => {
+            let dateien: Vec<FileInfo> = resp
+                .files
+                .into_iter()
+                .map(|f| FileInfo {
+                    id: f.file_id,
+                    filename: f.name,
+                    mime_type: f
+                        .mime_type
+                        .unwrap_or_else(|| "application/octet-stream".to_string()),
+                    size_bytes: f.size_bytes as i64,
+                })
+                .collect();
+            Ok(dateien)
+        }
+        ControlPayload::Error(e) => Err(format!("Server-Fehler: {}", e.message)),
+        other => Err(format!(
+            "Unerwartete Antwort vom Server: {:?}",
+            std::mem::discriminant(&other)
+        )),
+    }
 }
 
 // --- Hilfsfunktionen ---
-
-fn uuid_stub() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .subsec_nanos();
-    format!("stub-{:010}", nanos)
-}
 
 fn chrono_now() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -940,68 +1241,51 @@ fn parse_plugin_id(id: &str) -> Result<speakeasy_plugin::types::PluginId, String
 /// Gibt Server-Informationen zurueck
 #[tauri::command]
 pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, String> {
-    let conn = state.connection.lock().map_err(|e| e.to_string())?;
-    if !conn.connected {
-        return Err("Nicht mit einem Server verbunden".to_string());
+    {
+        let conn = state.connection.lock().map_err(|e| e.to_string())?;
+        if !conn.connected {
+            return Err("Nicht mit einem Server verbunden".to_string());
+        }
     }
-    let username = conn.username.clone().unwrap_or_else(|| "Unbekannt".to_string());
-    drop(conn);
 
     debug!("Frage Server-Info ab");
 
-    // TODO Phase 3: Echte Daten vom Server holen
+    let mut tcp = state.tcp.lock().await;
+    let conn = tcp
+        .as_mut()
+        .ok_or_else(|| "Keine TCP-Verbindung vorhanden".to_string())?;
+
+    // Server-Info abrufen
+    let info = conn
+        .get_server_info()
+        .await
+        .map_err(|e| format!("Server-Info Abfrage fehlgeschlagen: {}", e))?;
+
+    // Channel-Liste abrufen
+    let channels = conn
+        .get_channel_list()
+        .await
+        .map_err(|e| format!("Channel-Liste Abfrage fehlgeschlagen: {}", e))?;
+
+    // Protokoll-Typen in Client-DTOs konvertieren
+    let channel_dtos: Vec<ChannelInfo> = channels
+        .into_iter()
+        .map(|ch| ChannelInfo {
+            id: ch.channel_id.inner().to_string(),
+            name: ch.name,
+            description: ch.description.unwrap_or_default(),
+            parent_id: ch.parent_id.map(|p| p.inner().to_string()),
+            clients: vec![],
+            max_clients: ch.max_clients.unwrap_or(0),
+        })
+        .collect();
+
     Ok(ServerInfo {
-        name: "Speakeasy Demo-Server".to_string(),
-        description: "Lokaler Entwicklungsserver".to_string(),
-        version: "0.1.0".to_string(),
-        max_clients: 100,
-        online_clients: 3,
-        channels: vec![
-            ChannelInfo {
-                id: "1".to_string(),
-                name: "Allgemein".to_string(),
-                description: "Allgemeiner Sprachkanal".to_string(),
-                parent_id: None,
-                max_clients: 20,
-                clients: vec![
-                    ClientInfo {
-                        id: "self".to_string(),
-                        username: username.clone(),
-                        is_muted: false,
-                        is_deafened: false,
-                        is_self: true,
-                    },
-                    ClientInfo {
-                        id: "2".to_string(),
-                        username: "Alice".to_string(),
-                        is_muted: false,
-                        is_deafened: false,
-                        is_self: false,
-                    },
-                ],
-            },
-            ChannelInfo {
-                id: "2".to_string(),
-                name: "Gaming".to_string(),
-                description: "Fuer Gaming-Sessions".to_string(),
-                parent_id: None,
-                max_clients: 10,
-                clients: vec![ClientInfo {
-                    id: "3".to_string(),
-                    username: "Bob".to_string(),
-                    is_muted: true,
-                    is_deafened: false,
-                    is_self: false,
-                }],
-            },
-            ChannelInfo {
-                id: "3".to_string(),
-                name: "AFK".to_string(),
-                description: "Abwesend".to_string(),
-                parent_id: None,
-                max_clients: 50,
-                clients: vec![],
-            },
-        ],
+        name: info.name,
+        description: info.welcome_message.unwrap_or_default(),
+        version: info.version,
+        max_clients: info.max_clients,
+        online_clients: info.current_clients,
+        channels: channel_dtos,
     })
 }
