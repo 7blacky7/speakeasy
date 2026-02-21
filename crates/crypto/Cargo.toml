@@ -23,7 +23,7 @@ ed25519-dalek = { version = "2", features = ["rand_core"] }
 x25519-dalek = { version = "2", features = ["static_secrets"] }
 
 # Zertifikats-Generierung (Dev/Test)
-rcgen = "0.13"
+rcgen = "0.14"
 
 # TLS-Wrapper
 rustls.workspace = true
