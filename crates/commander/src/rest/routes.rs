@@ -30,20 +30,19 @@ pub fn v1_router() -> Router<CommanderState> {
         .route("/v1/clients/:id/poke", post(handlers::clients::poke_client))
         // Berechtigungen
         .route(
-            "/v1/permissions/:target",
-            get(handlers::permissions::get_permissions),
+            "/v1/permissions/:id",
+            get(handlers::permissions::get_permissions)
+                .delete(handlers::permissions::remove_permission),
         )
         .route(
             "/v1/permissions",
             post(handlers::permissions::set_permission),
         )
-        .route(
-            "/v1/permissions/:id",
-            delete(handlers::permissions::remove_permission),
-        )
         // Dateien
-        .route("/v1/files/:channel_id", get(handlers::files::list_files))
-        .route("/v1/files/:id", delete(handlers::files::delete_file))
+        .route(
+            "/v1/files/:id",
+            get(handlers::files::list_files).delete(handlers::files::delete_file),
+        )
         // Logs
         .route("/v1/logs", get(handlers::logs::get_logs))
 }
