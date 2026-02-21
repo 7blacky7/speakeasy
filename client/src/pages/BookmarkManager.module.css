@@ -1,0 +1,164 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  gap: 16px;
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: var(--font-size-xs);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-secondary);
+}
+
+.table td {
+  padding: 6px 8px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tr:hover td {
+  background-color: var(--color-bg-hover);
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.btnEdit {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-sans);
+  padding: 3px 10px;
+  transition: background-color 0.15s;
+}
+
+.btnEdit:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.btnDelete {
+  background-color: transparent;
+  border: 1px solid rgba(240, 71, 71, 0.4);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-sans);
+  padding: 3px 10px;
+  transition: background-color 0.15s;
+}
+
+.btnDelete:hover {
+  background-color: rgba(240, 71, 71, 0.1);
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.btnClose {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 20px;
+  transition: background-color 0.15s;
+}
+
+.btnClose:hover {
+  background-color: var(--color-bg-hover);
+}
+
+/* Inline-Bearbeitung */
+.editInput {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+}
+
+.editInput:focus {
+  border-color: var(--color-accent);
+}
+
+.portInput {
+  width: 70px;
+}
+
+.btnSave {
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-sans);
+  padding: 3px 10px;
+  transition: background-color 0.15s;
+}
+
+.btnSave:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.btnCancel {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-sans);
+  padding: 3px 10px;
+  transition: background-color 0.15s;
+}
+
+.btnCancel:hover {
+  background-color: var(--color-bg-hover);
+}

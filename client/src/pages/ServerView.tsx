@@ -11,6 +11,7 @@ import { ChatPanel } from "../components/chat/ChatPanel";
 import ChannelCreateDialog from "../components/server/ChannelCreateDialog";
 import ChannelEditDialog from "../components/server/ChannelEditDialog";
 import ChannelDeleteDialog from "../components/server/ChannelDeleteDialog";
+import ConnectDialog from "../components/server/ConnectDialog";
 import styles from "./ServerView.module.css";
 
 type DialogState =
@@ -36,17 +37,23 @@ export default function ServerView() {
   const [currentChannelId, setCurrentChannelId] = createSignal<string | null>(null);
   const [chatVisible, setChatVisible] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const [loading, setLoading] = createSignal(true);
+  const [loading, setLoading] = createSignal(false);
   const [dialog, setDialog] = createSignal<DialogState>({ type: "none" });
   const [infoPanelMode, setInfoPanelMode] = createSignal<InfoPanelMode>("server");
   const [currentUsername, setCurrentUsername] = createSignal<string | null>(null);
+  const [connected, setConnected] = createSignal(false);
+  const [showConnectDialog, setShowConnectDialog] = createSignal(false);
 
   onMount(async () => {
     try {
       const name = await getCurrentUsername();
-      setCurrentUsername(name);
+      if (name) {
+        setCurrentUsername(name);
+        // Wir haben einen Username, also versuchen wir Server-Info zu laden
+        setConnected(true);
+      }
     } catch {
-      // kein Username verfuegbar
+      // kein Username verfuegbar - nicht verbunden
     }
   });
 
@@ -72,13 +79,19 @@ export default function ServerView() {
     }
   };
 
-  createEffect(() => {
-    // Bei Server-Wechsel neu laden
-    void params.id;
+  const startPolling = () => {
+    if (pollTimer) clearInterval(pollTimer);
     setLoading(true);
     fetchServerInfo();
-
     pollTimer = window.setInterval(fetchServerInfo, 4000);
+  };
+
+  createEffect(() => {
+    if (connected()) {
+      // Bei Verbindung oder Server-Wechsel neu laden
+      void params.id;
+      startPolling();
+    }
   });
 
   onCleanup(() => {
@@ -164,16 +177,40 @@ export default function ServerView() {
 
   // MenuBar-Handler
   const handleConnect = () => {
-    navigate("/");
+    setShowConnectDialog(true);
+  };
+
+  const handleConnected = async () => {
+    setShowConnectDialog(false);
+    setConnected(true);
+    try {
+      const name = await getCurrentUsername();
+      setCurrentUsername(name);
+    } catch {
+      // ignorieren
+    }
+    if (!params.id) {
+      navigate("/server/1");
+    }
   };
 
   const handleDisconnect = async () => {
     try {
       await disconnect();
-      navigate("/");
     } catch (e) {
       console.error("Trennen fehlgeschlagen:", e);
     }
+    if (pollTimer) clearInterval(pollTimer);
+    setConnected(false);
+    setServerName("");
+    setChannels([]);
+    setRawChannels([]);
+    setSelectedChannel(null);
+    setCurrentChannelId(null);
+    setCurrentUsername(null);
+    setError(null);
+    setLoading(false);
+    navigate("/");
   };
 
   // Tab-Daten
@@ -190,7 +227,7 @@ export default function ServerView() {
   };
 
   const handleNewTab = () => {
-    navigate("/");
+    setShowConnectDialog(true);
   };
 
   // Admin-Navigation als separates Fenster
@@ -222,9 +259,9 @@ export default function ServerView() {
 
   return (
     <div class={styles.page}>
-      {/* Menueleiste */}
+      {/* Menueleiste - IMMER sichtbar */}
       <MenuBar
-        connected={!error()}
+        connected={connected() && !error()}
         serverName={serverName()}
         serverAddress={localStorage.getItem("speakeasy_last_address") || undefined}
         serverPort={Number(localStorage.getItem("speakeasy_last_port")) || undefined}
@@ -233,76 +270,99 @@ export default function ServerView() {
         onDisconnect={handleDisconnect}
       />
 
-      {/* Tab-Leiste */}
-      <TabBar
-        tabs={tabs()}
-        onTabSelect={handleTabSelect}
-        onTabClose={handleTabClose}
-        onNewTab={handleNewTab}
-      />
+      {/* Tab-Leiste - IMMER sichtbar */}
+      <Show when={connected()}>
+        <TabBar
+          tabs={tabs()}
+          onTabSelect={handleTabSelect}
+          onTabClose={handleTabClose}
+          onNewTab={handleNewTab}
+        />
+      </Show>
 
-      <Show when={!loading()} fallback={<div class={styles.loading}>Lade Serverinfo...</div>}>
-        <Show when={!error()} fallback={<div class={styles.error}>{error()}</div>}>
-          {/* Hauptbereich: ChannelTree links + Info rechts */}
-          <div class={styles.mainArea}>
-            {/* Channel-Baum (links) */}
-            <div class={styles.channelTreePanel}>
-              <ChannelTree
-                channels={channels()}
-                currentChannelId={currentChannelId()}
-                currentUserId={null}
-                currentUsername={currentUsername()}
-                onChannelJoin={handleChannelJoin}
-                onChannelSelect={handleChannelSelect}
-                onChannelEdit={handleChannelEdit}
-                onChannelDelete={handleChannelDelete}
-                onSubchannelCreate={handleSubchannelCreate}
-                serverName={serverName()}
-                onlineClients={onlineClients()}
-                maxClients={maxClients()}
-                onServerClick={handleServerClick}
-                onServerEdit={() => openAdminWindow()}
-                onChannelCreate={handleChannelCreate}
-                onPermissions={handlePermissions}
-                onAuditLog={handleAuditLog}
-                serverSelected={infoPanelMode() === "server"}
-              />
-            </div>
+      {/* Nicht verbunden: Hinweis */}
+      <Show when={!connected()}>
+        <div class={styles.disconnected}>
+          <div class={styles.disconnectedText}>Nicht verbunden</div>
+          <div class={styles.disconnectedHint}>
+            Server &gt; Verbinden... um eine Verbindung herzustellen
+          </div>
+        </div>
+      </Show>
 
-            {/* Info-Panel (rechts) */}
-            <Show
-              when={infoPanelMode() === "channel" && selectedChannel()}
-              fallback={
-                <ServerInfoPanel
-                  name={serverName()}
-                  description={serverDescription()}
-                  version={serverVersion()}
+      {/* Verbunden: Server-Interface */}
+      <Show when={connected()}>
+        <Show when={!loading()} fallback={<div class={styles.loading}>Lade Serverinfo...</div>}>
+          <Show when={!error()} fallback={<div class={styles.error}>{error()}</div>}>
+            {/* Hauptbereich: ChannelTree links + Info rechts */}
+            <div class={styles.mainArea}>
+              {/* Channel-Baum (links) */}
+              <div class={styles.channelTreePanel}>
+                <ChannelTree
+                  channels={channels()}
+                  currentChannelId={currentChannelId()}
+                  currentUserId={null}
+                  currentUsername={currentUsername()}
+                  onChannelJoin={handleChannelJoin}
+                  onChannelSelect={handleChannelSelect}
+                  onChannelEdit={handleChannelEdit}
+                  onChannelDelete={handleChannelDelete}
+                  onSubchannelCreate={handleSubchannelCreate}
+                  serverName={serverName()}
                   onlineClients={onlineClients()}
                   maxClients={maxClients()}
-                  uptimeSecs={uptimeSecs()}
-                  isAdmin={true}
-                  onServerUpdated={fetchServerInfo}
+                  onServerClick={handleServerClick}
+                  onServerEdit={() => openAdminWindow()}
+                  onChannelCreate={handleChannelCreate}
+                  onPermissions={handlePermissions}
+                  onAuditLog={handleAuditLog}
+                  serverSelected={infoPanelMode() === "server"}
                 />
-              }
-            >
-              <ChannelInfoPanel channel={selectedChannel()} />
-            </Show>
-          </div>
+              </div>
 
-          {/* Chat-Panel (unten, einklappbar) */}
-          <div class={styles.chatToggle}>
-            <button class={styles.chatToggleBtn} onClick={toggleChat}>
-              {chatVisible() ? "Chat ausblenden" : "Chat einblenden"}
-              <span class={styles.chatShortcut}>Strg+Enter</span>
-            </button>
-          </div>
-
-          <Show when={chatVisible()}>
-            <div class={styles.chatArea}>
-              <ChatPanel channel={activeChatChannel()} />
+              {/* Info-Panel (rechts) */}
+              <Show
+                when={infoPanelMode() === "channel" && selectedChannel()}
+                fallback={
+                  <ServerInfoPanel
+                    name={serverName()}
+                    description={serverDescription()}
+                    version={serverVersion()}
+                    onlineClients={onlineClients()}
+                    maxClients={maxClients()}
+                    uptimeSecs={uptimeSecs()}
+                    isAdmin={true}
+                    onServerUpdated={fetchServerInfo}
+                  />
+                }
+              >
+                <ChannelInfoPanel channel={selectedChannel()} />
+              </Show>
             </div>
+
+            {/* Chat-Panel (unten, einklappbar) */}
+            <div class={styles.chatToggle}>
+              <button class={styles.chatToggleBtn} onClick={toggleChat}>
+                {chatVisible() ? "Chat ausblenden" : "Chat einblenden"}
+                <span class={styles.chatShortcut}>Strg+Enter</span>
+              </button>
+            </div>
+
+            <Show when={chatVisible()}>
+              <div class={styles.chatArea}>
+                <ChatPanel channel={activeChatChannel()} />
+              </div>
+            </Show>
           </Show>
         </Show>
+      </Show>
+
+      {/* ConnectDialog (Modal) */}
+      <Show when={showConnectDialog()}>
+        <ConnectDialog
+          onClose={() => setShowConnectDialog(false)}
+          onConnected={handleConnected}
+        />
       </Show>
 
       {/* Dialoge */}

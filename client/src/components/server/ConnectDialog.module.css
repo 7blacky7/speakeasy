@@ -1,0 +1,101 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.portField {
+  flex: 0 0 100px;
+}
+
+.input {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.errorMsg {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  padding: 6px 8px;
+  background-color: rgba(240, 71, 71, 0.1);
+  border: 1px solid rgba(240, 71, 71, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.btnPrimary {
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 16px;
+  transition: background-color 0.15s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnCancel {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 16px;
+  transition: background-color 0.15s;
+}
+
+.btnCancel:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.btnCancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -1,5 +1,4 @@
 import { createSignal, For, Show, onMount, onCleanup } from "solid-js";
-import { useNavigate } from "@solidjs/router";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { connectToServer } from "../../bridge";
 import styles from "./MenuBar.module.css";
@@ -39,16 +38,34 @@ interface MenuBarProps {
   username?: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
+  onBookmarkConnect?: (bm: Bookmark) => void;
+  onBookmarkNewTab?: (bm: Bookmark) => void;
+  onBookmarkEdit?: (bm: Bookmark, index: number) => void;
 }
 
 type OpenMenu = "server" | "bookmarks" | "settings" | null;
+
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  bookmark: Bookmark | null;
+  index: number;
+}
 
 export default function MenuBar(props: MenuBarProps) {
   const [openMenu, setOpenMenu] = createSignal<OpenMenu>(null);
   const [bookmarks, setBookmarks] = createSignal<Bookmark[]>([]);
   const [bookmarkSaved, setBookmarkSaved] = createSignal(false);
-  const navigate = useNavigate();
+  const [ctxMenu, setCtxMenu] = createSignal<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    bookmark: null,
+    index: -1,
+  });
   let menubarRef: HTMLDivElement | undefined;
+  let ctxMenuRef: HTMLDivElement | undefined;
 
   const loadBookmarks = () => {
     try {
@@ -81,19 +98,68 @@ export default function MenuBar(props: MenuBarProps) {
   };
 
   const handleBookmarkConnect = async (bm: Bookmark) => {
-    try {
-      await connectToServer({
-        address: bm.address,
-        port: bm.port,
-        username: bm.username,
-      });
-      navigate("/server/1");
-    } catch (e) {
-      console.error("Bookmark-Verbindung fehlgeschlagen:", e);
+    if (props.onBookmarkConnect) {
+      props.onBookmarkConnect(bm);
+    } else {
+      try {
+        await connectToServer({
+          address: bm.address,
+          port: bm.port,
+          username: bm.username,
+        });
+      } catch (e) {
+        console.error("Bookmark-Verbindung fehlgeschlagen:", e);
+      }
+    }
+  };
+
+  const handleBookmarkRightClick = (e: MouseEvent, bm: Bookmark, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      bookmark: bm,
+      index,
+    });
+  };
+
+  const closeCtxMenu = () => {
+    setCtxMenu({ visible: false, x: 0, y: 0, bookmark: null, index: -1 });
+  };
+
+  const ctxConnect = () => {
+    const bm = ctxMenu().bookmark;
+    closeCtxMenu();
+    setOpenMenu(null);
+    if (bm) handleBookmarkConnect(bm);
+  };
+
+  const ctxNewTab = () => {
+    const bm = ctxMenu().bookmark;
+    closeCtxMenu();
+    setOpenMenu(null);
+    if (bm && props.onBookmarkNewTab) {
+      props.onBookmarkNewTab(bm);
+    } else if (bm) {
+      handleBookmarkConnect(bm);
+    }
+  };
+
+  const ctxEdit = () => {
+    const ctx = ctxMenu();
+    closeCtxMenu();
+    setOpenMenu(null);
+    if (ctx.bookmark && props.onBookmarkEdit) {
+      props.onBookmarkEdit(ctx.bookmark, ctx.index);
     }
   };
 
   const handleOutsideClick = (e: MouseEvent) => {
+    if (ctxMenu().visible && ctxMenuRef && !ctxMenuRef.contains(e.target as Node)) {
+      closeCtxMenu();
+    }
     if (menubarRef && !menubarRef.contains(e.target as Node)) {
       setOpenMenu(null);
     }
@@ -101,6 +167,7 @@ export default function MenuBar(props: MenuBarProps) {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
+      closeCtxMenu();
       setOpenMenu(null);
     }
   };
@@ -117,6 +184,7 @@ export default function MenuBar(props: MenuBarProps) {
   });
 
   const toggleMenu = (menu: OpenMenu) => {
+    closeCtxMenu();
     if (openMenu() === menu) {
       setOpenMenu(null);
     } else {
@@ -191,12 +259,13 @@ export default function MenuBar(props: MenuBarProps) {
             <Show when={bookmarks().length > 0}>
               <div class={styles.separator} />
               <For each={bookmarks()}>
-                {(bm) => (
+                {(bm, i) => (
                   <button
                     class={styles.bookmarkEntry}
                     onClick={() =>
                       closeAndAction(() => handleBookmarkConnect(bm))
                     }
+                    onContextMenu={(e) => handleBookmarkRightClick(e, bm, i())}
                   >
                     <span class={styles.dropdownLabel}>{bm.name}</span>
                     <span class={styles.bookmarkAddress}>
@@ -209,7 +278,7 @@ export default function MenuBar(props: MenuBarProps) {
             <div class={styles.separator} />
             <button
               class={styles.dropdownItem}
-              onClick={() => closeAndAction(() => navigate("/"))}
+              onClick={() => closeAndAction(() => openSettingsWindow("/bookmarks", "Bookmarks verwalten", 600, 400))}
             >
               <span class={styles.dropdownLabel}>Alle anzeigen...</span>
             </button>
@@ -248,6 +317,26 @@ export default function MenuBar(props: MenuBarProps) {
           </div>
         </Show>
       </div>
+
+      {/* Bookmark-Kontextmenu */}
+      <Show when={ctxMenu().visible}>
+        <div
+          ref={ctxMenuRef}
+          class={styles.contextMenu}
+          style={{ left: `${ctxMenu().x}px`, top: `${ctxMenu().y}px` }}
+        >
+          <button class={styles.contextMenuItem} onClick={ctxConnect}>
+            Verbinden
+          </button>
+          <button class={styles.contextMenuItem} onClick={ctxNewTab}>
+            In neuem Tab verbinden
+          </button>
+          <div class={styles.separator} />
+          <button class={styles.contextMenuItem} onClick={ctxEdit}>
+            Bearbeiten
+          </button>
+        </div>
+      </Show>
     </div>
   );
 }

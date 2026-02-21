@@ -72,6 +72,27 @@
   margin-left: auto;
 }
 
+/* --- Nicht verbunden --- */
+.disconnected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.disconnectedText {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.disconnectedHint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 /* --- Chat-Bereich (unten, einklappbar) --- */
 .chatArea {
   flex-shrink: 0;
