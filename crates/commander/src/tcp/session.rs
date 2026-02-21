@@ -88,6 +88,7 @@ mod tests {
                 created_at: Utc::now(),
                 last_login: None,
                 is_active: true,
+                password_changed: true,
             },
             scopes: vec![],
             auth_art: AuthArt::Session,

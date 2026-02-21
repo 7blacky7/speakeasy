@@ -57,6 +57,9 @@ pub fn run() {
             commands::change_password,
             commands::change_nickname,
             commands::set_away,
+            // Erster-Start-Erlebnis Commands (Phase 8.6)
+            commands::get_must_change_password,
+            commands::clear_force_password_change,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

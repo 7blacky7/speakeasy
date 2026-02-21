@@ -166,15 +166,28 @@ export interface ConnectOptions {
   password?: string;
 }
 
+export interface ConnectResult {
+  success: boolean;
+  must_change_password: boolean;
+}
+
 // --- IPC Commands ---
 
-export async function connectToServer(opts: ConnectOptions): Promise<void> {
+export async function connectToServer(opts: ConnectOptions): Promise<ConnectResult> {
   return invoke("connect_to_server", {
     address: opts.address,
     port: opts.port,
     username: opts.username,
     password: opts.password ?? null,
   });
+}
+
+export async function getMustChangePassword(): Promise<boolean> {
+  return invoke("get_must_change_password");
+}
+
+export async function clearForcePasswordChange(): Promise<void> {
+  return invoke("clear_force_password_change");
 }
 
 export async function disconnect(): Promise<void> {

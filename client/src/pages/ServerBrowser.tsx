@@ -1,6 +1,7 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { connectToServer } from "../bridge";
+import { connectToServer, clearForcePasswordChange } from "../bridge";
+import ForcePasswordChangeDialog from "../components/server/ForcePasswordChangeDialog";
 import styles from "./ServerBrowser.module.css";
 
 const STORAGE_KEY_ADDRESS = "speakeasy_last_address";
@@ -21,6 +22,7 @@ export default function ServerBrowser() {
   const [password, setPassword] = createSignal("");
   const [connecting, setConnecting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [showPasswordChange, setShowPasswordChange] = createSignal(false);
 
   async function handleConnect(e: Event) {
     e.preventDefault();
@@ -31,7 +33,7 @@ export default function ServerBrowser() {
     setError(null);
     setConnecting(true);
     try {
-      await connectToServer({
+      const result = await connectToServer({
         address: address(),
         port: port(),
         username: username(),
@@ -40,7 +42,11 @@ export default function ServerBrowser() {
       localStorage.setItem(STORAGE_KEY_ADDRESS, address());
       localStorage.setItem(STORAGE_KEY_PORT, String(port()));
       localStorage.setItem(STORAGE_KEY_USERNAME, username());
-      navigate("/server/1");
+      if (result.must_change_password) {
+        setShowPasswordChange(true);
+      } else {
+        navigate("/server/1");
+      }
     } catch (err) {
       setError(String(err));
     } finally {
@@ -48,8 +54,20 @@ export default function ServerBrowser() {
     }
   }
 
+  async function handlePasswordChanged() {
+    await clearForcePasswordChange();
+    setShowPasswordChange(false);
+    navigate("/server/1");
+  }
+
   return (
     <div class={styles.page}>
+      <Show when={showPasswordChange()}>
+        <ForcePasswordChangeDialog
+          onPasswordChanged={handlePasswordChanged}
+          currentPassword={password()}
+        />
+      </Show>
       <div class={styles.hero}>
         <h1 class={styles.title}>Speakeasy</h1>
         <p class={styles.subtitle}>Open-Source Voice-Chat</p>

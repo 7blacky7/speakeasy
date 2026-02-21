@@ -135,6 +135,7 @@ mod tests {
                 created_at: Utc::now(),
                 last_login: None,
                 is_active: true,
+                password_changed: false,
             };
             self.benutzer.lock().unwrap().push(record.clone());
             Ok(record)
@@ -225,6 +226,7 @@ mod tests {
                 created_at: Utc::now(),
                 last_login: None,
                 is_active: true,
+                password_changed: true,
             },
             scopes: vec![],
             auth_art: AuthArt::Session,
@@ -244,6 +246,7 @@ mod tests {
                 created_at: Utc::now(),
                 last_login: None,
                 is_active: true,
+                password_changed: true,
             },
             scopes: vec!["admin:read".to_string()],
             auth_art: AuthArt::ApiToken,
@@ -262,6 +265,7 @@ mod tests {
                 created_at: Utc::now(),
                 last_login: None,
                 is_active: true,
+                password_changed: true,
             },
             scopes: vec!["admin:*".to_string()],
             auth_art: AuthArt::ApiToken,

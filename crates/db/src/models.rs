@@ -20,6 +20,8 @@ pub struct BenutzerRecord {
     pub created_at: DateTime<Utc>,
     pub last_login: Option<DateTime<Utc>>,
     pub is_active: bool,
+    /// Ob der Benutzer sein Passwort bereits geaendert hat (false = Standardpasswort noch aktiv)
+    pub password_changed: bool,
 }
 
 /// Daten zum Erstellen eines neuen Benutzers
@@ -36,6 +38,7 @@ pub struct BenutzerUpdate {
     pub password_hash: Option<String>,
     pub is_active: Option<bool>,
     pub last_login: Option<DateTime<Utc>>,
+    pub password_changed: Option<bool>,
 }
 
 // ---------------------------------------------------------------------------

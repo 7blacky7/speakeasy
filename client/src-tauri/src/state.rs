@@ -15,6 +15,8 @@ pub struct ConnectionState {
     pub server_port: Option<u16>,
     pub username: Option<String>,
     pub current_channel: Option<String>,
+    /// Ob der Benutzer sein Passwort zwingend aendern muss
+    pub force_password_change: bool,
 }
 
 /// Audio-Zustand

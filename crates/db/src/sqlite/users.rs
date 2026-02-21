@@ -16,8 +16,8 @@ impl UserRepository for SqliteDb {
         let now_str = now.to_rfc3339();
 
         sqlx::query(
-            "INSERT INTO users (id, username, password_hash, created_at, is_active)
-             VALUES (?, ?, ?, ?, 1)",
+            "INSERT INTO users (id, username, password_hash, created_at, is_active, password_changed)
+             VALUES (?, ?, ?, ?, 1, 0)",
         )
         .bind(&id_str)
         .bind(data.username)
@@ -41,12 +41,13 @@ impl UserRepository for SqliteDb {
             created_at: now,
             last_login: None,
             is_active: true,
+            password_changed: false,
         })
     }
 
     async fn get_by_id(&self, id: Uuid) -> DbResult<Option<BenutzerRecord>> {
         let row = sqlx::query(
-            "SELECT id, username, password_hash, created_at, last_login, is_active
+            "SELECT id, username, password_hash, created_at, last_login, is_active, password_changed
              FROM users WHERE id = ?",
         )
         .bind(id.to_string())
@@ -58,7 +59,7 @@ impl UserRepository for SqliteDb {
 
     async fn get_by_name(&self, username: &str) -> DbResult<Option<BenutzerRecord>> {
         let row = sqlx::query(
-            "SELECT id, username, password_hash, created_at, last_login, is_active
+            "SELECT id, username, password_hash, created_at, last_login, is_active, password_changed
              FROM users WHERE username = ?",
         )
         .bind(username)
@@ -83,6 +84,9 @@ impl UserRepository for SqliteDb {
         if data.last_login.is_some() {
             sets.push("last_login = ?");
         }
+        if data.password_changed.is_some() {
+            sets.push("password_changed = ?");
+        }
 
         if sets.is_empty() {
             return self
@@ -105,6 +109,9 @@ impl UserRepository for SqliteDb {
         }
         if let Some(ref v) = data.last_login {
             q = q.bind(v.to_rfc3339());
+        }
+        if let Some(v) = data.password_changed {
+            q = q.bind(v as i64);
         }
         q = q.bind(id.to_string());
 
@@ -130,10 +137,10 @@ impl UserRepository for SqliteDb {
 
     async fn list(&self, nur_aktive: bool) -> DbResult<Vec<BenutzerRecord>> {
         let sql = if nur_aktive {
-            "SELECT id, username, password_hash, created_at, last_login, is_active
+            "SELECT id, username, password_hash, created_at, last_login, is_active, password_changed
              FROM users WHERE is_active = 1 ORDER BY username"
         } else {
-            "SELECT id, username, password_hash, created_at, last_login, is_active
+            "SELECT id, username, password_hash, created_at, last_login, is_active, password_changed
              FROM users ORDER BY username"
         };
 
@@ -148,7 +155,7 @@ impl UserRepository for SqliteDb {
         password_hash: &str,
     ) -> DbResult<Option<BenutzerRecord>> {
         let row = sqlx::query(
-            "SELECT id, username, password_hash, created_at, last_login, is_active
+            "SELECT id, username, password_hash, created_at, last_login, is_active, password_changed
              FROM users
              WHERE username = ? AND password_hash = ? AND is_active = 1",
         )
@@ -194,6 +201,7 @@ fn row_to_benutzer(row: &sqlx::sqlite::SqliteRow) -> DbResult<BenutzerRecord> {
         .transpose()?;
 
     let is_active: i64 = row.try_get("is_active")?;
+    let password_changed: i64 = row.try_get("password_changed").unwrap_or(1);
 
     Ok(BenutzerRecord {
         id,
@@ -202,5 +210,6 @@ fn row_to_benutzer(row: &sqlx::sqlite::SqliteRow) -> DbResult<BenutzerRecord> {
         created_at,
         last_login,
         is_active: is_active != 0,
+        password_changed: password_changed != 0,
     })
 }

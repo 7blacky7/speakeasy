@@ -69,6 +69,9 @@ pub struct LoginResponse {
     pub expires_at: u64,
     /// Zugewiesene Server-Gruppen
     pub server_groups: Vec<String>,
+    /// Ob der Benutzer sein Passwort zwingend aendern muss (Standardpasswort noch aktiv)
+    #[serde(default)]
+    pub must_change_password: bool,
 }
 
 /// Logout-Anfrage (Client trennt Verbindung sauber)

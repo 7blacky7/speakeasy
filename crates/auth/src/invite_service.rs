@@ -202,6 +202,7 @@ mod tests {
                 created_at: Utc::now(),
                 last_login: None,
                 is_active: true,
+                password_changed: false,
             };
             self.benutzer.lock().unwrap().push(record.clone());
             Ok(record)

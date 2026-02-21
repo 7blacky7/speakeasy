@@ -182,6 +182,8 @@ where
         "Login erfolgreich"
     );
 
+    let must_change_password = !benutzer.password_changed;
+
     ControlMessage::new(
         request_id,
         ControlPayload::LoginResponse(LoginResponse {
@@ -190,6 +192,7 @@ where
             server_id: state.config.server_id,
             expires_at,
             server_groups,
+            must_change_password,
         }),
     )
 }
@@ -242,6 +245,16 @@ where
         .await
     {
         Ok(()) => {
+            // password_changed Flag in DB setzen
+            let _ = UserRepository::update(
+                state.db.as_ref(),
+                user_id.inner(),
+                BenutzerUpdate {
+                    password_changed: Some(true),
+                    ..Default::default()
+                },
+            )
+            .await;
             tracing::info!(user_id = %user_id, "Passwort erfolgreich geaendert");
             ControlMessage::new(
                 request_id,

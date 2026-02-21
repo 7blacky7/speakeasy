@@ -61,6 +61,16 @@ pub struct ServerInfo {
     pub channels: Vec<ChannelInfo>,
 }
 
+// --- Ergebnis-Typen ---
+
+/// Ergebnis eines Server-Verbindungsversuchs
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ConnectResult {
+    pub success: bool,
+    /// Ob der Benutzer sein Passwort zwingend aendern muss
+    pub must_change_password: bool,
+}
+
 // --- Commands ---
 
 /// Verbindet sich mit einem Speakeasy-Server
@@ -71,7 +81,7 @@ pub async fn connect_to_server(
     port: u16,
     username: String,
     password: Option<String>,
-) -> Result<(), String> {
+) -> Result<ConnectResult, String> {
     info!(
         "Verbinde mit {}:{} als '{}' (Passwort: {})",
         address,
@@ -87,10 +97,12 @@ pub async fn connect_to_server(
 
     // Login durchfuehren
     let pwd = password.as_deref().unwrap_or("");
-    server_conn
+    let login_resp = server_conn
         .login(&username, pwd)
         .await
         .map_err(|e| format!("Login fehlgeschlagen: {}", e))?;
+
+    let must_change_password = login_resp.must_change_password;
 
     // Metadaten im sync ConnectionState speichern
     {
@@ -99,6 +111,7 @@ pub async fn connect_to_server(
         conn.server_address = Some(address);
         conn.server_port = Some(port);
         conn.username = Some(username);
+        conn.force_password_change = must_change_password;
     }
 
     // Echte TCP-Verbindung im async Mutex speichern
@@ -107,6 +120,24 @@ pub async fn connect_to_server(
         *tcp = Some(server_conn);
     }
 
+    Ok(ConnectResult {
+        success: true,
+        must_change_password,
+    })
+}
+
+/// Gibt zurueck ob der aktuelle Benutzer sein Passwort aendern muss
+#[tauri::command]
+pub async fn get_must_change_password(state: State<'_, AppState>) -> Result<bool, String> {
+    let conn = state.connection.lock().map_err(|e| e.to_string())?;
+    Ok(conn.force_password_change)
+}
+
+/// Setzt das force_password_change Flag zurueck (nach erfolgreicher Passwort-Aenderung)
+#[tauri::command]
+pub async fn clear_force_password_change(state: State<'_, AppState>) -> Result<(), String> {
+    let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
+    conn.force_password_change = false;
     Ok(())
 }
 
