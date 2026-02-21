@@ -4,7 +4,16 @@ import { getServerInfo, joinChannel, type ChannelInfo } from "../bridge";
 import ChannelTree, { buildChannelTree, type ChannelNode } from "../components/server/ChannelTree";
 import ChannelInfoPanel from "../components/server/ChannelInfo";
 import { ChatPanel } from "../components/chat/ChatPanel";
+import ChannelCreateDialog from "../components/server/ChannelCreateDialog";
+import ChannelEditDialog from "../components/server/ChannelEditDialog";
+import ChannelDeleteDialog from "../components/server/ChannelDeleteDialog";
 import styles from "./ServerView.module.css";
+
+type DialogState =
+  | { type: "none" }
+  | { type: "create"; parentId: string | null }
+  | { type: "edit"; channelId: string }
+  | { type: "delete"; channelId: string; channelName: string };
 
 export default function ServerView() {
   const params = useParams<{ id: string }>();
@@ -19,6 +28,7 @@ export default function ServerView() {
   const [chatVisible, setChatVisible] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [loading, setLoading] = createSignal(true);
+  const [dialog, setDialog] = createSignal<DialogState>({ type: "none" });
 
   // Server-Info polling (alle 4 Sekunden)
   let pollTimer: number | undefined;
@@ -66,6 +76,41 @@ export default function ServerView() {
     setSelectedChannel(channel);
   };
 
+  // --- Dialog-Handler ---
+
+  const handleChannelCreate = () => {
+    setDialog({ type: "create", parentId: null });
+  };
+
+  const handleChannelEdit = (channelId: string) => {
+    setDialog({ type: "edit", channelId });
+  };
+
+  const handleChannelDelete = (channelId: string) => {
+    const ch = rawChannels().find((c) => c.id === channelId);
+    if (!ch) return;
+    setDialog({ type: "delete", channelId, channelName: ch.name });
+  };
+
+  const handleSubchannelCreate = (parentId: string) => {
+    setDialog({ type: "create", parentId });
+  };
+
+  const closeDialog = () => {
+    setDialog({ type: "none" });
+  };
+
+  const handleDialogDone = () => {
+    fetchServerInfo();
+  };
+
+  // Aktuell bearbeiteten Channel finden
+  const editChannel = () => {
+    const d = dialog();
+    if (d.type !== "edit") return null;
+    return rawChannels().find((c) => c.id === d.channelId) ?? null;
+  };
+
   const toggleChat = () => {
     setChatVisible((v) => !v);
   };
@@ -99,6 +144,9 @@ export default function ServerView() {
             <div class={styles.serverMeta}>
               <span class={styles.metaBadge}>{onlineClients()}/{maxClients()} Clients</span>
               <span class={styles.metaBadge}>v{serverVersion()}</span>
+              <button class={styles.createChannelBtn} onClick={handleChannelCreate}>
+                + Channel
+              </button>
             </div>
           </div>
 
@@ -112,6 +160,9 @@ export default function ServerView() {
                 currentUserId={null}
                 onChannelJoin={handleChannelJoin}
                 onChannelSelect={handleChannelSelect}
+                onChannelEdit={handleChannelEdit}
+                onChannelDelete={handleChannelDelete}
+                onSubchannelCreate={handleSubchannelCreate}
               />
             </div>
 
@@ -133,6 +184,39 @@ export default function ServerView() {
             </div>
           </Show>
         </Show>
+      </Show>
+
+      {/* Dialoge */}
+      <Show when={dialog().type === "create"}>
+        <ChannelCreateDialog
+          channels={rawChannels()}
+          defaultParentId={(dialog() as { type: "create"; parentId: string | null }).parentId}
+          onClose={closeDialog}
+          onCreated={handleDialogDone}
+        />
+      </Show>
+
+      <Show when={dialog().type === "edit" && editChannel() !== null}>
+        <ChannelEditDialog
+          channel={editChannel()!}
+          channels={rawChannels()}
+          onClose={closeDialog}
+          onEdited={handleDialogDone}
+        />
+      </Show>
+
+      <Show when={dialog().type === "delete"}>
+        {(() => {
+          const d = dialog() as { type: "delete"; channelId: string; channelName: string };
+          return (
+            <ChannelDeleteDialog
+              channelId={d.channelId}
+              channelName={d.channelName}
+              onClose={closeDialog}
+              onDeleted={handleDialogDone}
+            />
+          );
+        })()}
       </Show>
     </div>
   );

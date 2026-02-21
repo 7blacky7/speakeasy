@@ -1,0 +1,77 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.question {
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.channelName {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.warning {
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  padding: 8px 10px;
+  background-color: rgba(250, 166, 26, 0.1);
+  border: 1px solid rgba(250, 166, 26, 0.3);
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+}
+
+.errorMsg {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  padding: 6px 8px;
+  background-color: rgba(240, 71, 71, 0.1);
+  border: 1px solid rgba(240, 71, 71, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.btnDelete {
+  background-color: var(--color-danger);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 16px;
+  transition: background-color 0.15s;
+}
+
+.btnDelete:hover:not(:disabled) {
+  background-color: #c03a3a;
+}
+
+.btnDelete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnCancel {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 16px;
+  transition: background-color 0.15s;
+}
+
+.btnCancel:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.btnCancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

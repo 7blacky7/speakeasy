@@ -1,0 +1,152 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.required {
+  color: var(--color-danger);
+}
+
+.hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-text-muted);
+}
+
+.input,
+.select {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--color-accent);
+}
+
+.textarea {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 8px;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.textarea:focus {
+  border-color: var(--color-accent);
+}
+
+.select option {
+  background-color: var(--color-bg-primary);
+}
+
+.radioGroup {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.radioLabel input[type="radio"] {
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.errorMsg {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  padding: 6px 8px;
+  background-color: rgba(240, 71, 71, 0.1);
+  border: 1px solid rgba(240, 71, 71, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.btnPrimary {
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 16px;
+  transition: background-color 0.15s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnCancel {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-family: var(--font-sans);
+  padding: 6px 16px;
+  transition: background-color 0.15s;
+}
+
+.btnCancel:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.btnCancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.infoText {
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  padding: 6px 8px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
