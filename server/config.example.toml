@@ -1,0 +1,76 @@
+# Speakeasy Server – Beispiel-Konfiguration
+# Kopiere diese Datei nach config.toml und passe die Werte an.
+# Alle Felder sind optional – nicht angegebene Werte verwenden Standardwerte.
+
+[server]
+# Anzeigename des Servers (wird Clients angezeigt)
+name = "Mein Speakeasy Server"
+
+# Maximale Anzahl gleichzeitiger Verbindungen
+max_clients = 512
+
+# Willkommensnachricht (optional)
+# willkommen = "Willkommen auf unserem Server!"
+
+# Server-Passwort (auskommentiert = kein Passwort erforderlich)
+# passwort = "geheimesPasswort"
+
+
+[netzwerk]
+# Netzwerk-Interface auf dem der Server lauscht
+# "0.0.0.0" = alle Interfaces, "127.0.0.1" = nur lokal
+bind_adresse = "0.0.0.0"
+
+# TCP-Port fuer das Control-Protokoll (Standard: 9987)
+tcp_port = 9987
+
+# UDP-Port fuer Voice-Daten (Standard: 9987)
+udp_port = 9987
+
+# Port fuer die REST-API (Standard: 10080)
+api_port = 10080
+
+# Port fuer gRPC (Standard: 10443)
+grpc_port = 10443
+
+# TLS-Konfiguration (auskommentiert = kein TLS, nur fuer Entwicklung!)
+# tls_zertifikat = "/etc/speakeasy/tls/cert.pem"
+# tls_schluessel  = "/etc/speakeasy/tls/key.pem"
+
+
+[datenbank]
+# Datenbank-Typ: "sqlite" (Standard) oder "postgres"
+typ = "sqlite"
+
+# SQLite: Pfad zur Datenbankdatei
+url = "sqlite://speakeasy.db"
+
+# PostgreSQL-Beispiel:
+# typ = "postgres"
+# url = "postgres://speakeasy:passwort@localhost:5432/speakeasy"
+
+# Maximale Verbindungspool-Groesse
+max_verbindungen = 5
+
+
+[audio]
+# Maximale Bitrate pro Client in kbit/s
+max_bitrate_kbps = 128
+
+# Jitter-Buffer-Groesse in Millisekunden
+# Niedrigere Werte = weniger Latenz, hoehere Werte = robuster bei Paketverlust
+jitter_buffer_ms = 60
+
+# Zeit in ms ohne Audio bevor ein Client als still gilt
+stille_timeout_ms = 300
+
+
+[logging]
+# Log-Level: "trace", "debug", "info" (Standard), "warn", "error"
+level = "info"
+
+# Log-Format: "text" (Standard, lesbar) oder "json" (fuer Log-Aggregation)
+format = "text"
+
+# Log-Datei (auskommentiert = nur stdout)
+# datei = "/var/log/speakeasy/server.log"

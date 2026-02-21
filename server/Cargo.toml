@@ -1,0 +1,29 @@
+[package]
+name = "speakeasy-server"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Speakeasy Voice-Server"
+default-run = "speakeasy-server"
+
+[[bin]]
+name = "speakeasy-server"
+path = "src/main.rs"
+
+[dependencies]
+speakeasy-core = { path = "../crates/core" }
+speakeasy-protocol = { path = "../crates/protocol" }
+speakeasy-db = { path = "../crates/db" }
+
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+chrono.workspace = true
