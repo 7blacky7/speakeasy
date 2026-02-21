@@ -28,6 +28,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 # Speakeasy Workspace-Crates (als eigenstaendiges Projekt - path relativ zu src-tauri/)
+tauri-plugin-updater = "2"
 speakeasy-core = { path = "../../crates/core" }
 speakeasy-protocol = { path = "../../crates/protocol" }
 
