@@ -1,0 +1,39 @@
+# Eigenstaendiger Workspace - KEIN Member des Root-Workspaces
+[workspace]
+
+[package]
+name = "speakeasy-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Moritz Kolar <moritz.kolar@gmail.com>"]
+description = "Speakeasy Desktop Client (Tauri 2)"
+
+[lib]
+name = "speakeasy_client_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "speakeasy-client"
+path = "src/main.rs"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Speakeasy Workspace-Crates (als eigenstaendiges Projekt - path relativ zu src-tauri/)
+speakeasy-core = { path = "../../crates/core" }
+speakeasy-protocol = { path = "../../crates/protocol" }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

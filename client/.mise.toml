@@ -1,0 +1,26 @@
+[tools]
+node = "lts"
+
+[tasks.dev]
+description = "Frontend Dev-Server starten (Vite)"
+run = "pnpm dev"
+
+[tasks.build]
+description = "Frontend fuer Produktion bauen"
+run = "pnpm build"
+
+[tasks.tauri-dev]
+description = "Tauri Entwicklungsmodus (Frontend + Backend)"
+run = "pnpm tauri dev"
+
+[tasks.tauri-build]
+description = "Tauri Release-Build erstellen"
+run = "pnpm tauri build"
+
+[tasks.install]
+description = "Abhaengigkeiten installieren"
+run = "pnpm install"
+
+[tasks.cargo-check]
+description = "Rust-Code pruefen (ohne Build)"
+run = "cargo check --manifest-path src-tauri/Cargo.toml"
