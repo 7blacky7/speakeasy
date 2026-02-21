@@ -5,7 +5,6 @@ import {
   onMount,
   onCleanup,
   Show,
-  For,
   batch,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
@@ -48,6 +47,7 @@ import CalibrationModal from "../components/audio/CalibrationModal";
 import PttKeyCapture from "../components/audio/PttKeyCapture";
 import CodecSettings from "../components/audio/CodecSettings";
 import JitterSettings from "../components/audio/JitterSettings";
+import CustomSelect from "../components/ui/CustomSelect";
 
 import styles from "./AudioSettings.module.css";
 
@@ -235,8 +235,7 @@ export default function AudioSettings() {
   }
 
   // Sound-Profil Handler
-  function handleProfileSelect(e: Event) {
-    const id = (e.currentTarget as HTMLSelectElement).value;
+  function handleProfileSelect(id: string) {
     if (!id) {
       setActiveProfileIdState(null);
       setActiveProfileId(null);
@@ -360,14 +359,15 @@ export default function AudioSettings() {
           <h2 class={styles.sectionTitle}>Sound-Profil</h2>
           <div class={styles.sectionBody}>
             <div class={styles.profileRow}>
-              <select
-                class={styles.profileSelect}
+              <CustomSelect
                 value={activeProfileId() ?? ""}
+                options={[
+                  { value: "", label: "-- Kein Profil --" },
+                  ...profiles().map((p) => ({ value: p.id, label: p.name })),
+                ]}
                 onChange={handleProfileSelect}
-              >
-                <option value="">-- Kein Profil --</option>
-                <For each={profiles()}>{(p) => <option value={p.id}>{p.name}</option>}</For>
-              </select>
+                ariaLabel="Sound-Profil"
+              />
               <button class={styles.profileBtn} onClick={handleSaveAs}>Speichern als...</button>
               <Show when={activeProfileId()}>
                 <button class={styles.profileBtn} onClick={handleOverwrite}>Überschreiben</button>

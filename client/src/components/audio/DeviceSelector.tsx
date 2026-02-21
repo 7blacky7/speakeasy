@@ -1,5 +1,5 @@
-import { For } from "solid-js";
 import { AudioDevice } from "../../bridge";
+import CustomSelect from "../ui/CustomSelect";
 import styles from "./DeviceSelector.module.css";
 
 interface DeviceSelectorProps {
@@ -15,26 +15,24 @@ export default function DeviceSelector(props: DeviceSelectorProps) {
   const filteredDevices = () =>
     props.devices.filter((d) => d.kind === props.kind);
 
+  const options = () => [
+    { value: "", label: "-- Standard --" },
+    ...filteredDevices().map((d) => ({
+      value: d.id,
+      label: d.name + (d.is_default ? " (Standard)" : ""),
+    })),
+  ];
+
   return (
     <div class={styles.row}>
       <label class={styles.label}>{props.label}</label>
       <div class={styles.controls}>
-        <select
-          class={styles.select}
+        <CustomSelect
           value={props.selectedId ?? ""}
-          onChange={(e) => props.onChange(e.currentTarget.value)}
-          aria-label={props.label}
-        >
-          <option value="">-- Standard --</option>
-          <For each={filteredDevices()}>
-            {(device) => (
-              <option value={device.id}>
-                {device.name}
-                {device.is_default ? " (Standard)" : ""}
-              </option>
-            )}
-          </For>
-        </select>
+          options={options()}
+          onChange={props.onChange}
+          ariaLabel={props.label}
+        />
         {props.onTest && (
           <button
             class={styles.testBtn}

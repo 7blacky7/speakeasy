@@ -2,6 +2,7 @@ import { For } from "solid-js";
 import { CodecConfig } from "../../bridge";
 import AudioSlider from "./AudioSlider";
 import DspModule from "./DspModule";
+import CustomSelect from "../ui/CustomSelect";
 import styles from "./CodecSettings.module.css";
 
 interface CodecSettingsProps {
@@ -24,28 +25,22 @@ export default function CodecSettings(props: CodecSettingsProps) {
     <div class={styles.container}>
       <div class={styles.row}>
         <label class={styles.label}>Sample Rate</label>
-        <select
-          class={styles.select}
-          value={props.config.sampleRate}
-          onChange={(e) => props.onChange("sampleRate", parseInt(e.currentTarget.value))}
-        >
-          <For each={SAMPLE_RATES}>
-            {(rate) => <option value={rate}>{rate} Hz</option>}
-          </For>
-        </select>
+        <CustomSelect
+          value={String(props.config.sampleRate)}
+          options={SAMPLE_RATES.map((r) => ({ value: String(r), label: `${r} Hz` }))}
+          onChange={(v) => props.onChange("sampleRate", parseInt(v))}
+          ariaLabel="Sample Rate"
+        />
       </div>
 
       <div class={styles.row}>
         <label class={styles.label}>Buffer Size</label>
-        <select
-          class={styles.select}
-          value={props.config.bufferSize}
-          onChange={(e) => props.onChange("bufferSize", parseInt(e.currentTarget.value))}
-        >
-          <For each={BUFFER_SIZES}>
-            {(size) => <option value={size}>{size} Samples</option>}
-          </For>
-        </select>
+        <CustomSelect
+          value={String(props.config.bufferSize)}
+          options={BUFFER_SIZES.map((s) => ({ value: String(s), label: `${s} Samples` }))}
+          onChange={(v) => props.onChange("bufferSize", parseInt(v))}
+          ariaLabel="Buffer Size"
+        />
       </div>
 
       <AudioSlider
@@ -61,15 +56,12 @@ export default function CodecSettings(props: CodecSettingsProps) {
 
       <div class={styles.row}>
         <label class={styles.label}>Frame Size</label>
-        <select
-          class={styles.select}
-          value={props.config.frameSize}
-          onChange={(e) => props.onChange("frameSize", parseFloat(e.currentTarget.value))}
-        >
-          <For each={FRAME_SIZES}>
-            {(size) => <option value={size}>{size} ms</option>}
-          </For>
-        </select>
+        <CustomSelect
+          value={String(props.config.frameSize)}
+          options={FRAME_SIZES.map((s) => ({ value: String(s), label: `${s} ms` }))}
+          onChange={(v) => props.onChange("frameSize", parseFloat(v))}
+          ariaLabel="Frame Size"
+        />
       </div>
 
       <div class={styles.radioGroup}>
