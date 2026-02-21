@@ -143,6 +143,50 @@
   font-weight: 400;
 }
 
+/* --- Server-Root-Element --- */
+.serverRoot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  min-height: 24px;
+  user-select: none;
+  transition: background-color 0.08s;
+}
+
+.serverRoot:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.serverRoot.serverRootSelected {
+  background-color: var(--color-bg-active);
+}
+
+.serverIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.serverRootName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* --- Branch --- */
 .branch {
   /* Kein zusaetzlicher Abstand, Tree soll kompakt sein */

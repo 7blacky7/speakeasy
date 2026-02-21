@@ -3,7 +3,7 @@ import type { ChannelInfo, ClientInfo } from "../../bridge";
 import { ContextMenu, createContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import styles from "./ChannelTree.module.css";
 
-// Channel mit Kindkanälen (Baumstruktur)
+// Channel mit Kindkanaelen (Baumstruktur)
 export interface ChannelNode extends ChannelInfo {
   children: ChannelNode[];
   has_password: boolean;
@@ -25,6 +25,16 @@ interface ChannelTreeProps {
   onUserKick?: (userId: string) => void;
   onUserBan?: (userId: string) => void;
   onUserMove?: (userId: string) => void;
+  // Server-Root Props
+  serverName?: string;
+  onlineClients?: number;
+  maxClients?: number;
+  onServerClick?: () => void;
+  onServerEdit?: () => void;
+  onChannelCreate?: () => void;
+  onPermissions?: () => void;
+  onAuditLog?: () => void;
+  serverSelected?: boolean;
 }
 
 // Flache Channel-Liste in Baumstruktur umwandeln
@@ -58,30 +68,74 @@ export function buildChannelTree(channels: ChannelInfo[]): ChannelNode[] {
 
 export default function ChannelTree(props: ChannelTreeProps) {
   const { menuState, show: showMenu, hide: hideMenu } = createContextMenu();
+  const [serverCollapsed, setServerCollapsed] = createSignal(false);
+
+  const handleServerContextMenu = (e: MouseEvent) => {
+    const items: ContextMenuItem[] = [
+      { id: "create", label: "Channel erstellen", icon: "+", onClick: () => props.onChannelCreate?.(), disabled: !props.onChannelCreate },
+      { id: "sep1", label: "", separator: true },
+      { id: "edit", label: "Server bearbeiten", icon: "\u270E", onClick: () => props.onServerEdit?.(), disabled: !props.onServerEdit },
+      { id: "permissions", label: "Berechtigungen verwalten", icon: "\u2261", onClick: () => props.onPermissions?.(), disabled: !props.onPermissions },
+      { id: "audit", label: "Audit-Log anzeigen", icon: "\u2630", onClick: () => props.onAuditLog?.(), disabled: !props.onAuditLog },
+    ];
+    showMenu(e, items);
+  };
+
+  const handleServerClick = () => {
+    props.onServerClick?.();
+  };
+
+  const handleServerToggle = (e: MouseEvent) => {
+    e.stopPropagation();
+    setServerCollapsed((v) => !v);
+  };
 
   return (
     <div class={styles.tree}>
-      <For each={props.channels}>
-        {(channel) => (
-          <ChannelBranch
-            channel={channel}
-            depth={0}
-            currentChannelId={props.currentChannelId}
-            currentUserId={props.currentUserId}
-            onChannelJoin={props.onChannelJoin}
-            onChannelSelect={props.onChannelSelect}
-            onChannelEdit={props.onChannelEdit}
-            onChannelDelete={props.onChannelDelete}
-            onSubchannelCreate={props.onSubchannelCreate}
-            onUserMessage={props.onUserMessage}
-            onUserPoke={props.onUserPoke}
-            onUserKick={props.onUserKick}
-            onUserBan={props.onUserBan}
-            onUserMove={props.onUserMove}
-            showMenu={showMenu}
-          />
-        )}
-      </For>
+      {/* Server als Root-Element */}
+      <Show when={props.serverName}>
+        <div
+          class={`${styles.serverRoot} ${props.serverSelected ? styles.serverRootSelected : ""}`}
+          onClick={handleServerClick}
+          onContextMenu={handleServerContextMenu}
+        >
+          <button class={styles.toggleBtn} onClick={handleServerToggle}>
+            {serverCollapsed() ? "[+]" : "[-]"}
+          </button>
+          <span class={styles.serverIcon}>S</span>
+          <span class={styles.serverRootName}>{props.serverName}</span>
+          <Show when={props.maxClients !== undefined && props.maxClients! > 0}>
+            <span class={styles.clientCount}>
+              {props.onlineClients ?? 0}/{props.maxClients}
+            </span>
+          </Show>
+        </div>
+      </Show>
+
+      {/* Channels darunter (eingerueckt wenn Server-Root vorhanden) */}
+      <Show when={!serverCollapsed()}>
+        <For each={props.channels}>
+          {(channel) => (
+            <ChannelBranch
+              channel={channel}
+              depth={props.serverName ? 1 : 0}
+              currentChannelId={props.currentChannelId}
+              currentUserId={props.currentUserId}
+              onChannelJoin={props.onChannelJoin}
+              onChannelSelect={props.onChannelSelect}
+              onChannelEdit={props.onChannelEdit}
+              onChannelDelete={props.onChannelDelete}
+              onSubchannelCreate={props.onSubchannelCreate}
+              onUserMessage={props.onUserMessage}
+              onUserPoke={props.onUserPoke}
+              onUserKick={props.onUserKick}
+              onUserBan={props.onUserBan}
+              onUserMove={props.onUserMove}
+              showMenu={showMenu}
+            />
+          )}
+        </For>
+      </Show>
 
       <Show when={menuState().visible}>
         <ContextMenu

@@ -1,8 +1,11 @@
 import { createSignal, createEffect, onCleanup, Show } from "solid-js";
-import { useParams } from "@solidjs/router";
-import { getServerInfo, joinChannel, type ChannelInfo } from "../bridge";
+import { useParams, useNavigate } from "@solidjs/router";
+import { getServerInfo, joinChannel, disconnect, type ChannelInfo } from "../bridge";
 import ChannelTree, { buildChannelTree, type ChannelNode } from "../components/server/ChannelTree";
 import ChannelInfoPanel from "../components/server/ChannelInfo";
+import ServerInfoPanel from "../components/server/ServerInfoPanel";
+import MenuBar from "../components/ui/MenuBar";
+import TabBar, { type ServerTab } from "../components/ui/TabBar";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import ChannelCreateDialog from "../components/server/ChannelCreateDialog";
 import ChannelEditDialog from "../components/server/ChannelEditDialog";
@@ -15,9 +18,13 @@ type DialogState =
   | { type: "edit"; channelId: string }
   | { type: "delete"; channelId: string; channelName: string };
 
+type InfoPanelMode = "server" | "channel";
+
 export default function ServerView() {
   const params = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [serverName, setServerName] = createSignal("");
+  const [serverDescription, setServerDescription] = createSignal("");
   const [serverVersion, setServerVersion] = createSignal("");
   const [onlineClients, setOnlineClients] = createSignal(0);
   const [maxClients, setMaxClients] = createSignal(0);
@@ -29,6 +36,7 @@ export default function ServerView() {
   const [error, setError] = createSignal<string | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [dialog, setDialog] = createSignal<DialogState>({ type: "none" });
+  const [infoPanelMode, setInfoPanelMode] = createSignal<InfoPanelMode>("server");
 
   // Server-Info polling (alle 4 Sekunden)
   let pollTimer: number | undefined;
@@ -37,6 +45,7 @@ export default function ServerView() {
     try {
       const info = await getServerInfo();
       setServerName(info.name);
+      setServerDescription(info.description);
       setServerVersion(info.version);
       setOnlineClients(info.online_clients);
       setMaxClients(info.max_clients);
@@ -44,7 +53,7 @@ export default function ServerView() {
       setChannels(buildChannelTree(info.channels));
       setError(null);
       setLoading(false);
-    } catch (e) {
+    } catch {
       setError("Server nicht erreichbar");
       setLoading(false);
     }
@@ -74,6 +83,12 @@ export default function ServerView() {
 
   const handleChannelSelect = (channel: ChannelNode) => {
     setSelectedChannel(channel);
+    setInfoPanelMode("channel");
+  };
+
+  const handleServerClick = () => {
+    setSelectedChannel(null);
+    setInfoPanelMode("server");
   };
 
   // --- Dialog-Handler ---
@@ -134,23 +149,66 @@ export default function ServerView() {
     return rawChannels().find((c) => c.id === id) ?? null;
   };
 
+  // MenuBar-Handler
+  const handleConnect = () => {
+    navigate("/");
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await disconnect();
+      navigate("/");
+    } catch (e) {
+      console.error("Trennen fehlgeschlagen:", e);
+    }
+  };
+
+  // Tab-Daten
+  const tabs = (): ServerTab[] => [
+    { id: params.id, name: serverName() || "Server", active: true },
+  ];
+
+  const handleTabSelect = (_tabId: string) => {
+    // Aktuell nur ein Tab
+  };
+
+  const handleTabClose = (_tabId: string) => {
+    handleDisconnect();
+  };
+
+  const handleNewTab = () => {
+    navigate("/");
+  };
+
+  // Admin-Navigation (Platzhalter)
+  const handlePermissions = () => {
+    navigate("/admin");
+  };
+
+  const handleAuditLog = () => {
+    navigate("/admin");
+  };
+
   return (
     <div class={styles.page}>
+      {/* Menueleiste */}
+      <MenuBar
+        connected={!error()}
+        onConnect={handleConnect}
+        onDisconnect={handleDisconnect}
+      />
+
+      {/* Tab-Leiste */}
+      <TabBar
+        tabs={tabs()}
+        onTabSelect={handleTabSelect}
+        onTabClose={handleTabClose}
+        onNewTab={handleNewTab}
+      />
+
       <Show when={!loading()} fallback={<div class={styles.loading}>Lade Serverinfo...</div>}>
         <Show when={!error()} fallback={<div class={styles.error}>{error()}</div>}>
-          {/* Server-Header */}
-          <div class={styles.serverHeader}>
-            <span class={styles.serverName}>{serverName()}</span>
-            <div class={styles.serverMeta}>
-              <span class={styles.metaBadge}>{onlineClients()}/{maxClients()} Clients</span>
-              <span class={styles.metaBadge}>v{serverVersion()}</span>
-              <button class={styles.createChannelBtn} onClick={handleChannelCreate}>
-                + Channel
-              </button>
-            </div>
-          </div>
-
-          {/* Hauptbereich: ChannelTree links + ChannelInfo rechts */}
+          {/* Hauptbereich: ChannelTree links + Info rechts */}
           <div class={styles.mainArea}>
             {/* Channel-Baum (links) */}
             <div class={styles.channelTreePanel}>
@@ -163,11 +221,35 @@ export default function ServerView() {
                 onChannelEdit={handleChannelEdit}
                 onChannelDelete={handleChannelDelete}
                 onSubchannelCreate={handleSubchannelCreate}
+                serverName={serverName()}
+                onlineClients={onlineClients()}
+                maxClients={maxClients()}
+                onServerClick={handleServerClick}
+                onServerEdit={handleServerClick}
+                onChannelCreate={handleChannelCreate}
+                onPermissions={handlePermissions}
+                onAuditLog={handleAuditLog}
+                serverSelected={infoPanelMode() === "server"}
               />
             </div>
 
-            {/* Channel-Info (rechts) */}
-            <ChannelInfoPanel channel={selectedChannel()} />
+            {/* Info-Panel (rechts) */}
+            <Show
+              when={infoPanelMode() === "channel" && selectedChannel()}
+              fallback={
+                <ServerInfoPanel
+                  name={serverName()}
+                  description={serverDescription()}
+                  version={serverVersion()}
+                  onlineClients={onlineClients()}
+                  maxClients={maxClients()}
+                  isAdmin={true}
+                  onServerUpdated={fetchServerInfo}
+                />
+              }
+            >
+              <ChannelInfoPanel channel={selectedChannel()} />
+            </Show>
           </div>
 
           {/* Chat-Panel (unten, einklappbar) */}
