@@ -113,6 +113,18 @@ export default function MenuBar(props: MenuBarProps) {
     }
   };
 
+  const handleBookmarkMiddleClick = (e: MouseEvent, bm: Bookmark) => {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenMenu(null);
+    if (props.onBookmarkNewTab) {
+      props.onBookmarkNewTab(bm);
+    } else {
+      handleBookmarkConnect(bm);
+    }
+  };
+
   const handleBookmarkRightClick = (e: MouseEvent, bm: Bookmark, index: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -265,6 +277,7 @@ export default function MenuBar(props: MenuBarProps) {
                     onClick={() =>
                       closeAndAction(() => handleBookmarkConnect(bm))
                     }
+                    onMouseDown={(e) => handleBookmarkMiddleClick(e, bm)}
                     onContextMenu={(e) => handleBookmarkRightClick(e, bm, i())}
                   >
                     <span class={styles.dropdownLabel}>{bm.name}</span>

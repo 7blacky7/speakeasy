@@ -43,6 +43,10 @@
   color: var(--color-text-primary);
 }
 
+.tab.dragOver {
+  border-left: 2px solid var(--color-accent);
+}
+
 .tabName {
   overflow: hidden;
   text-overflow: ellipsis;
