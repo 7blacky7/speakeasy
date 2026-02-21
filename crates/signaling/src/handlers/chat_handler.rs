@@ -55,9 +55,11 @@ where
                     created_at,
                 }),
             );
-            state
-                .broadcaster
-                .an_channel_ausser_senden(&request.channel_id, &user_id, broadcast_msg);
+            state.broadcaster.an_channel_ausser_senden(
+                &request.channel_id,
+                &user_id,
+                broadcast_msg,
+            );
 
             tracing::debug!(
                 user_id = %user_id,

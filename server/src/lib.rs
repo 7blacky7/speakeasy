@@ -128,13 +128,10 @@ impl Server {
         let voice_state = VoiceState::neu();
         let voice_config = VoiceServerConfig::neu(udp_addr);
 
-        let voice_server = VoiceServer::binden(
-            voice_config,
-            voice_router.clone(),
-            voice_state.clone(),
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("Voice-Server konnte nicht binden: {e}"))?;
+        let voice_server =
+            VoiceServer::binden(voice_config, voice_router.clone(), voice_state.clone())
+                .await
+                .map_err(|e| anyhow::anyhow!("Voice-Server konnte nicht binden: {e}"))?;
 
         let voice_server = Arc::new(voice_server);
         let (voice_shutdown_tx, voice_shutdown_rx) = tokio::sync::oneshot::channel::<()>();
@@ -153,25 +150,27 @@ impl Server {
         // SignalingServer nutzt LocalSet wegen async_fn_in_trait ohne Send.
         // Deshalb starten wir ihn in einem eigenen Thread mit current_thread Runtime.
         // Krypto-Modus und DTLS-Fingerprint bestimmen
-        let (crypto_mode, dtls_fingerprint) =
-            if self.config.netzwerk.tls_zertifikat.is_some() {
-                // TLS konfiguriert -> DTLS-Modus
-                match speakeasy_crypto::generate_self_signed_cert("speakeasy-server") {
-                    Ok(dtls_config) => {
-                        tracing::info!(
-                            fingerprint = %dtls_config.certificate_fingerprint,
-                            "DTLS-Zertifikat generiert"
-                        );
-                        ("dtls".to_string(), Some(dtls_config.certificate_fingerprint))
-                    }
-                    Err(e) => {
-                        tracing::warn!(fehler = %e, "DTLS-Zertifikat konnte nicht generiert werden, fallback auf none");
-                        ("none".to_string(), None)
-                    }
+        let (crypto_mode, dtls_fingerprint) = if self.config.netzwerk.tls_zertifikat.is_some() {
+            // TLS konfiguriert -> DTLS-Modus
+            match speakeasy_crypto::generate_self_signed_cert("speakeasy-server") {
+                Ok(dtls_config) => {
+                    tracing::info!(
+                        fingerprint = %dtls_config.certificate_fingerprint,
+                        "DTLS-Zertifikat generiert"
+                    );
+                    (
+                        "dtls".to_string(),
+                        Some(dtls_config.certificate_fingerprint),
+                    )
                 }
-            } else {
-                ("none".to_string(), None)
-            };
+                Err(e) => {
+                    tracing::warn!(fehler = %e, "DTLS-Zertifikat konnte nicht generiert werden, fallback auf none");
+                    ("none".to_string(), None)
+                }
+            }
+        } else {
+            ("none".to_string(), None)
+        };
 
         let signaling_config = SignalingConfig {
             server_name: self.config.server.name.clone(),
@@ -221,11 +220,11 @@ impl Server {
 
         // --- 7. Commander starten (REST + gRPC) ---
         let commander_executor = CommandExecutor::neu(
-            Arc::clone(&db),       // user_repo
-            Arc::clone(&db),       // channel_repo
-            Arc::clone(&db),       // permission_repo
-            Arc::clone(&db),       // ban_repo
-            Arc::clone(&db),       // audit_repo
+            Arc::clone(&db), // user_repo
+            Arc::clone(&db), // channel_repo
+            Arc::clone(&db), // permission_repo
+            Arc::clone(&db), // ban_repo
+            Arc::clone(&db), // audit_repo
             Arc::clone(&auth_service),
             Arc::clone(&permission_service),
             Arc::clone(&ban_service),
@@ -241,16 +240,15 @@ impl Server {
         });
 
         // Type-erased token validator (synchron, nutzt block_in_place fuer async SessionStore)
-        let commander_auth = Arc::new(speakeasy_commander::auth::CommanderAuth::neu(
-            Arc::clone(&auth_service),
-        ));
+        let commander_auth = Arc::new(speakeasy_commander::auth::CommanderAuth::neu(Arc::clone(
+            &auth_service,
+        )));
         let token_validator: TokenValidatorFn = Arc::new(move |token: &str| {
             let auth = Arc::clone(&commander_auth);
             let token = token.to_string();
             tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    auth.token_validieren(&token).await
-                })
+                tokio::runtime::Handle::current()
+                    .block_on(async { auth.token_validieren(&token).await })
             })
         });
 
@@ -301,7 +299,8 @@ impl Server {
         let obs_handle = if self.config.observability.aktiviert {
             let obs_addr: SocketAddr = self.config.observability_bind_adresse().parse()?;
             let handle = tokio::spawn(async move {
-                if let Err(e) = speakeasy_observability::observability_server_starten(obs_addr).await
+                if let Err(e) =
+                    speakeasy_observability::observability_server_starten(obs_addr).await
                 {
                     tracing::error!(fehler = %e, "Observability-Server Fehler");
                 }
@@ -330,7 +329,9 @@ impl Server {
         };
 
         // --- 10. Warten auf Shutdown-Signal ---
-        tracing::info!("Server laeuft. Alle Subsysteme gestartet. Warte auf Shutdown-Signal (Ctrl-C)...");
+        tracing::info!(
+            "Server laeuft. Alle Subsysteme gestartet. Warte auf Shutdown-Signal (Ctrl-C)..."
+        );
         tokio::signal::ctrl_c().await?;
         tracing::info!("Shutdown-Signal empfangen, fahre Server herunter...");
 

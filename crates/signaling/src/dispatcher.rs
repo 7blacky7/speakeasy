@@ -297,21 +297,21 @@ where
             // -------------------------------------------------------------------
             // Chat-Nachrichten
             // -------------------------------------------------------------------
-            ControlPayload::ChatSend(req) => Some(
-                chat_handler::handle_chat_send(req, request_id, user_id, &self.state).await,
-            ),
+            ControlPayload::ChatSend(req) => {
+                Some(chat_handler::handle_chat_send(req, request_id, user_id, &self.state).await)
+            }
 
-            ControlPayload::ChatEdit(req) => Some(
-                chat_handler::handle_chat_edit(req, request_id, user_id, &self.state).await,
-            ),
+            ControlPayload::ChatEdit(req) => {
+                Some(chat_handler::handle_chat_edit(req, request_id, user_id, &self.state).await)
+            }
 
-            ControlPayload::ChatDelete(req) => Some(
-                chat_handler::handle_chat_delete(req, request_id, user_id, &self.state).await,
-            ),
+            ControlPayload::ChatDelete(req) => {
+                Some(chat_handler::handle_chat_delete(req, request_id, user_id, &self.state).await)
+            }
 
-            ControlPayload::ChatHistory(req) => Some(
-                chat_handler::handle_chat_history(req, request_id, &self.state).await,
-            ),
+            ControlPayload::ChatHistory(req) => {
+                Some(chat_handler::handle_chat_history(req, request_id, &self.state).await)
+            }
 
             // -------------------------------------------------------------------
             // Unbekannte / unerwartete Nachrichten

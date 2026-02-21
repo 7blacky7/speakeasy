@@ -243,7 +243,10 @@ impl ServerConfig {
 
     /// Gibt die Bind-Adresse fuer den Commander REST-Server zurueck
     pub fn commander_rest_bind_adresse(&self) -> String {
-        format!("{}:{}", self.netzwerk.bind_adresse, self.commander.rest_port)
+        format!(
+            "{}:{}",
+            self.netzwerk.bind_adresse, self.commander.rest_port
+        )
     }
 
     /// Gibt die Bind-Adresse fuer den Commander TCP/TLS-Server zurueck
