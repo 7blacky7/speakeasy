@@ -51,6 +51,7 @@ where
     permission_service: Arc<PermissionService<P>>,
     #[allow(dead_code)]
     ban_service: Arc<BanService<B>>,
+    // Hinweis: ban_repo wird direkt fuer den Ban-Check in ausfuehren() genutzt.
     /// Server-Name (aus Konfiguration)
     server_name: String,
     /// Server-Version
@@ -96,12 +97,44 @@ where
         })
     }
 
-    /// Fuehrt einen Befehl im Kontext einer authentifizierten Session aus
+    /// Prueft ob der Benutzer aktuell gebannt ist.
+    async fn ban_pruefen(&self, session: &CommanderSession) -> CommanderResult<()> {
+        let ban = self.ban_repo.is_banned(Some(session.benutzer.id), None).await?;
+        if ban.is_some() {
+            return Err(CommanderError::NichtAutorisiert(
+                "Benutzer ist gesperrt".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Prueft ob die Session den erforderlichen Scope fuer den Befehl besitzt.
+    fn scope_pruefen(&self, cmd: &Command, session: &CommanderSession) -> CommanderResult<()> {
+        let erforderlich = cmd.erforderlicher_scope();
+        if !session.hat_scope(erforderlich) && !session.hat_scope("cmd:*") {
+            return Err(CommanderError::NichtAutorisiert(format!(
+                "Scope '{erforderlich}' erforderlich"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Fuehrt einen Befehl im Kontext einer authentifizierten Session aus.
+    ///
+    /// Security-Gates (werden fuer ALLE Interfaces einheitlich geprueft):
+    /// 1. Ban-Check: Gebannte Benutzer werden sofort abgewiesen
+    /// 2. Scope-Check: API-Tokens muessen den passenden Scope besitzen
     pub async fn ausfuehren(
         &self,
         cmd: Command,
         session: &CommanderSession,
     ) -> CommanderResult<Response> {
+        // --- Security Gate 1: Ban-Check ---
+        self.ban_pruefen(session).await?;
+
+        // --- Security Gate 2: Scope-Check fuer API-Tokens ---
+        self.scope_pruefen(&cmd, session)?;
+
         match cmd {
             // --- Server ---
             Command::ServerInfo => self.server_info().await,

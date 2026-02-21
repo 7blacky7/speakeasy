@@ -5,12 +5,15 @@
 //! Antworten: ok [...] oder error id=N msg=...
 
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::Result;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
+use crate::rate_limit::RateLimiter;
 use crate::rest::CommanderState;
 use crate::tcp::commands::tcp_befehl_zu_command;
 use crate::tcp::parser::{fehler_antwort_tcp, ok_antwort, parse_line};
@@ -48,27 +51,69 @@ impl TcpServer {
     pub async fn starten(
         self,
         state: CommanderState,
+        rate_limiter: Arc<RateLimiter>,
         tls_acceptor: TlsAcceptor,
     ) -> Result<()> {
         let listener = TcpListener::bind(self.konfig.bind_addr).await?;
         tracing::info!(addr = %self.konfig.bind_addr, "TCP/TLS-Commander-Server gestartet");
 
+        // Atomarer Verbindungszaehler fuer max_verbindungen-Enforcement
+        let verbindungszaehler = Arc::new(AtomicUsize::new(0));
+        let max_verbindungen = self.konfig.max_verbindungen;
+
         loop {
             let (stream, peer_addr) = listener.accept().await?;
+
+            // Connection-Limit pruefen BEVOR TLS-Handshake
+            let aktuelle = verbindungszaehler.fetch_add(1, Ordering::SeqCst);
+            if aktuelle >= max_verbindungen {
+                verbindungszaehler.fetch_sub(1, Ordering::SeqCst);
+                tracing::warn!(
+                    peer = %peer_addr,
+                    max = max_verbindungen,
+                    "Verbindung abgelehnt: Connection-Limit erreicht"
+                );
+                // Stream wird durch Drop geschlossen
+                continue;
+            }
+
+            // Per-IP Rate Limit fuer neue Verbindungen
+            let ip = peer_addr.ip().to_string();
+            if let Err(retry_after) = rate_limiter.pruefe_ip(&ip) {
+                verbindungszaehler.fetch_sub(1, Ordering::SeqCst);
+                tracing::warn!(
+                    peer = %peer_addr,
+                    retry_after,
+                    "Verbindung abgelehnt: IP-Rate-Limit"
+                );
+                continue;
+            }
+
             let tls_acceptor = tls_acceptor.clone();
             let state = state.clone();
+            let rate_limiter = Arc::clone(&rate_limiter);
+            let zaehler = Arc::clone(&verbindungszaehler);
             let zeilenlimit = self.konfig.zeilenlimit_bytes;
 
             tokio::spawn(async move {
                 match tls_acceptor.accept(stream).await {
                     Ok(tls_stream) => {
                         tracing::debug!(peer = %peer_addr, "Neue TCP/TLS-Verbindung");
-                        verbindung_behandeln(tls_stream, peer_addr, state, zeilenlimit).await;
+                        verbindung_behandeln(
+                            tls_stream,
+                            peer_addr,
+                            state,
+                            rate_limiter,
+                            zeilenlimit,
+                        )
+                        .await;
                     }
                     Err(e) => {
                         tracing::warn!(peer = %peer_addr, fehler = %e, "TLS-Handshake fehlgeschlagen");
                     }
                 }
+                // Verbindungszaehler nach Abschluss dekrementieren
+                zaehler.fetch_sub(1, Ordering::SeqCst);
             });
         }
     }
@@ -79,11 +124,13 @@ async fn verbindung_behandeln(
     stream: tokio_rustls::server::TlsStream<tokio::net::TcpStream>,
     peer_addr: SocketAddr,
     state: CommanderState,
+    rate_limiter: Arc<RateLimiter>,
     _zeilenlimit: usize,
 ) {
     let (reader, mut writer) = tokio::io::split(stream);
     let mut buf_reader = BufReader::new(reader);
     let mut session = TcpSession::neu(peer_addr);
+    let ip = peer_addr.ip().to_string();
 
     // Willkommensnachricht
     let _ = writer
@@ -94,7 +141,7 @@ async fn verbindung_behandeln(
     loop {
         zeile.clear();
         match buf_reader.read_line(&mut zeile).await {
-            Ok(0) => break, // Verbindung getrennt
+            Ok(0) => break,
             Ok(_) => {}
             Err(e) => {
                 tracing::debug!(fehler = %e, "Lesefehler auf TCP-Session");
@@ -102,7 +149,16 @@ async fn verbindung_behandeln(
             }
         }
 
-        let antwort = verarbeite_befehl(&zeile, &mut session, &state).await;
+        // Per-IP Rate Limit pro Befehl (nach dem Verbindungsaufbau)
+        if let Err(retry_after) = rate_limiter.pruefe_ip(&ip) {
+            let antwort = fehler_antwort_tcp(3008, &format!(
+                "Rate-Limit ueberschritten, bitte in {retry_after}s erneut versuchen"
+            ));
+            let _ = writer.write_all(antwort.as_bytes()).await;
+            break;
+        }
+
+        let antwort = verarbeite_befehl(&zeile, &mut session, &state, &rate_limiter, &ip).await;
         if writer.write_all(antwort.as_bytes()).await.is_err() {
             break;
         }
@@ -120,6 +176,8 @@ async fn verarbeite_befehl(
     zeile: &str,
     session: &mut TcpSession,
     state: &CommanderState,
+    rate_limiter: &RateLimiter,
+    ip: &str,
 ) -> String {
     let parsed = match parse_line(zeile) {
         Ok(p) => p,
@@ -137,8 +195,6 @@ async fn verarbeite_befehl(
                 Some(p) => p.to_string(),
                 None => return fehler_antwort_tcp(1005, "password fehlt"),
             };
-            // Token-Validierung ueber den token_validator (API-Token-Login)
-            // Fuer Passwort-Login: token = "username:password" als Konvention
             let token = format!("{username}:{passwort}");
             match (state.token_validator)(&token) {
                 Ok(cmd_session) => {
@@ -162,11 +218,20 @@ async fn verarbeite_befehl(
         None => return fehler_antwort_tcp(1001, "Nicht eingeloggt. Bitte zuerst 'login' aufrufen."),
     };
 
-    // Befehl konvertieren und ausfuehren
+    // Befehl konvertieren
     let command = match tcp_befehl_zu_command(&parsed) {
         Ok(c) => c,
         Err(e) => return fehler_antwort_tcp(e.fehler_code(), &e.to_string()),
     };
+
+    // Zusaetzliches Rate Limiting fuer teure Operationen
+    if command.ist_teure_operation() {
+        if let Err(retry_after) = rate_limiter.pruefe_teure_operation(ip) {
+            return fehler_antwort_tcp(3008, &format!(
+                "Rate-Limit fuer diese Operation ueberschritten, bitte in {retry_after}s erneut versuchen"
+            ));
+        }
+    }
 
     match state.ausfuehren(command, cmd_session).await {
         Ok(resp) => format_tcp_response(resp),

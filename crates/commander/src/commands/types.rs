@@ -104,6 +104,57 @@ pub enum Command {
     },
 }
 
+impl Command {
+    /// Gibt den erforderlichen Scope fuer API-Token-Authentifizierung zurueck.
+    ///
+    /// Session-Auth (nach Login) umgeht diese Pruefung.
+    /// API-Tokens muessen den exakten Scope oder "cmd:*" besitzen.
+    pub fn erforderlicher_scope(&self) -> &'static str {
+        match self {
+            // Lesende Server-Befehle
+            Command::ServerInfo => "cmd:serverinfo",
+            // Schreibende Server-Befehle
+            Command::ServerEdit { .. } => "cmd:serveredit",
+            Command::ServerStop { .. } => "cmd:serverstop",
+            // Kanal-Lesebefehle
+            Command::KanalListe => "cmd:channellist",
+            // Kanal-Schreibbefehle
+            Command::KanalErstellen { .. } => "cmd:channelcreate",
+            Command::KanalBearbeiten { .. } => "cmd:channeledit",
+            Command::KanalLoeschen { .. } => "cmd:channeldelete",
+            // Client-Lesebefehle
+            Command::ClientListe => "cmd:clientlist",
+            // Client-Aktionsbefehle
+            Command::ClientKicken { .. } => "cmd:clientkick",
+            Command::ClientBannen { .. } => "cmd:clientban",
+            Command::ClientVerschieben { .. } => "cmd:clientmove",
+            Command::ClientPoken { .. } => "cmd:clientpoke",
+            // Berechtigungs-Lesebefehle
+            Command::BerechtigungListe { .. } => "cmd:permissionlist",
+            // Berechtigungs-Schreibbefehle
+            Command::BerechtigungSetzen { .. } => "cmd:permissionwrite",
+            Command::BerechtigungEntfernen { .. } => "cmd:permissionwrite",
+            // Datei-Befehle
+            Command::DateiListe { .. } => "cmd:filelist",
+            Command::DateiLoeschen { .. } => "cmd:filedelete",
+            // Log-Befehle
+            Command::LogAbfragen { .. } => "cmd:logview",
+        }
+    }
+
+    /// Gibt true zurueck wenn dieser Befehl als "teuer" gilt
+    /// (unterliegt strengerem Rate-Limiting).
+    pub fn ist_teure_operation(&self) -> bool {
+        matches!(
+            self,
+            Command::ClientBannen { .. }
+                | Command::BerechtigungSetzen { .. }
+                | Command::BerechtigungEntfernen { .. }
+                | Command::ServerStop { .. }
+        )
+    }
+}
+
 /// Berechtigungswert-Eingabe (fuer REST/TCP-Deserialisierung)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
