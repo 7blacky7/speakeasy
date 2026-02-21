@@ -15,7 +15,7 @@ speakeasy-db = { path = "../db" }
 argon2 = { version = "0.5", features = ["password-hash"] }
 
 # Zufallswerte
-rand = "0.8"
+rand = "0.10"
 
 # Base64 fuer Token-Encoding
 base64 = "0.22"
