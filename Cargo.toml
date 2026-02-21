@@ -5,6 +5,7 @@ members = [
     "crates/core",
     "crates/protocol",
     "crates/db",
+    "crates/auth",
 ]
 
 [workspace.package]
@@ -17,6 +18,11 @@ repository = "https://github.com/7blacky7/speakeasy"
 [workspace.dependencies]
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+
+# Kryptografie
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
 
 # Logging / Tracing
 tracing = "0.1"

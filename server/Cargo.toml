@@ -16,6 +16,7 @@ path = "src/main.rs"
 speakeasy-core = { path = "../crates/core" }
 speakeasy-protocol = { path = "../crates/protocol" }
 speakeasy-db = { path = "../crates/db" }
+speakeasy-auth = { path = "../crates/auth" }
 
 tokio.workspace = true
 tracing.workspace = true
