@@ -1,0 +1,38 @@
+[package]
+name = "speakeasy-chat"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Text-Chat und Dateiversand fuer Speakeasy"
+
+[dependencies]
+speakeasy-core = { path = "../core" }
+speakeasy-db = { path = "../db" }
+speakeasy-auth = { path = "../auth" }
+
+# Async
+tokio = { workspace = true, features = ["fs"] }
+
+# Logging
+tracing.workspace = true
+
+# Fehlerbehandlung
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Serialisierung
+serde.workspace = true
+serde_json.workspace = true
+
+# Typen
+uuid.workspace = true
+chrono.workspace = true
+
+# SHA-256 fuer Checksummen
+sha2 = "0.10"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tempfile = "3"
