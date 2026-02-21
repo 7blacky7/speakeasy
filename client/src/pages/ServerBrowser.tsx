@@ -3,11 +3,21 @@ import { useNavigate } from "@solidjs/router";
 import { connectToServer } from "../bridge";
 import styles from "./ServerBrowser.module.css";
 
+const STORAGE_KEY_ADDRESS = "speakeasy_last_address";
+const STORAGE_KEY_PORT = "speakeasy_last_port";
+const STORAGE_KEY_USERNAME = "speakeasy_last_username";
+
 export default function ServerBrowser() {
   const navigate = useNavigate();
-  const [address, setAddress] = createSignal("localhost");
-  const [port, setPort] = createSignal(9001);
-  const [username, setUsername] = createSignal("");
+  const [address, setAddress] = createSignal(
+    localStorage.getItem(STORAGE_KEY_ADDRESS) || "localhost"
+  );
+  const [port, setPort] = createSignal(
+    Number(localStorage.getItem(STORAGE_KEY_PORT) || "9001")
+  );
+  const [username, setUsername] = createSignal(
+    localStorage.getItem(STORAGE_KEY_USERNAME) || ""
+  );
   const [password, setPassword] = createSignal("");
   const [connecting, setConnecting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -27,6 +37,9 @@ export default function ServerBrowser() {
         username: username(),
         password: password() || undefined,
       });
+      localStorage.setItem(STORAGE_KEY_ADDRESS, address());
+      localStorage.setItem(STORAGE_KEY_PORT, String(port()));
+      localStorage.setItem(STORAGE_KEY_USERNAME, username());
       navigate("/server/1");
     } catch (err) {
       setError(String(err));

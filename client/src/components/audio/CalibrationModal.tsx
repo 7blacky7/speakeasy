@@ -1,5 +1,5 @@
 import { createSignal, Show } from "solid-js";
-import { CalibrationResult } from "../../bridge";
+import { CalibrationResult, startCalibration } from "../../bridge";
 import styles from "./CalibrationModal.module.css";
 
 interface CalibrationModalProps {
@@ -7,37 +7,24 @@ interface CalibrationModalProps {
   onApply: (result: CalibrationResult) => void;
 }
 
-type Phase = "idle" | "measuring" | "done";
+type Phase = "idle" | "measuring" | "done" | "error";
 
 export default function CalibrationModal(props: CalibrationModalProps) {
   const [phase, setPhase] = createSignal<Phase>("idle");
-  const [progress, setProgress] = createSignal(0);
   const [result, setResult] = createSignal<CalibrationResult | null>(null);
+  const [errorMsg, setErrorMsg] = createSignal<string | null>(null);
 
-  function startMeasurement() {
+  async function startMeasurement() {
     setPhase("measuring");
-    setProgress(0);
-
-    const total = 3000;
-    const interval = 50;
-    let elapsed = 0;
-
-    const timer = setInterval(() => {
-      elapsed += interval;
-      setProgress(Math.min(100, (elapsed / total) * 100));
-
-      if (elapsed >= total) {
-        clearInterval(timer);
-        const mockResult: CalibrationResult = {
-          success: true,
-          suggestedVadSensitivity: 0.65,
-          suggestedInputVolume: 85,
-          noiseFloor: -48,
-        };
-        setResult(mockResult);
-        setPhase("done");
-      }
-    }, interval);
+    setErrorMsg(null);
+    try {
+      const r = await startCalibration();
+      setResult(r);
+      setPhase("done");
+    } catch (e) {
+      setErrorMsg(String(e));
+      setPhase("error");
+    }
   }
 
   function handleApply() {
@@ -68,14 +55,20 @@ export default function CalibrationModal(props: CalibrationModalProps) {
           </Show>
 
           <Show when={phase() === "measuring"}>
-            <p class={styles.text}>Bitte schweigen Sie fur 3 Sekunden...</p>
+            <p class={styles.text}>Bitte schweigen Sie - Messung laeuft...</p>
             <div class={styles.progressBar}>
-              <div
-                class={styles.progressFill}
-                style={{ width: `${progress()}%` }}
-              />
+              <div class={styles.progressFill} style={{ width: "100%", "animation": "progress 3s linear" }} />
             </div>
-            <p class={styles.progressLabel}>{Math.round(progress())}%</p>
+            <p class={styles.progressLabel}>Messung laeuft...</p>
+          </Show>
+
+          <Show when={phase() === "error"}>
+            <p class={`${styles.text} ${styles.errorText}`}>
+              Kalibrierung fehlgeschlagen: {errorMsg()}
+            </p>
+            <button class={styles.startBtn} onClick={() => setPhase("idle")}>
+              Erneut versuchen
+            </button>
           </Show>
 
           <Show when={phase() === "done" && result()}>

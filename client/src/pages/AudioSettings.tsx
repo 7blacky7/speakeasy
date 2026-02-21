@@ -1,7 +1,7 @@
 import { A } from "@solidjs/router";
 import {
   createSignal,
-  createEffect,
+  onMount,
   onCleanup,
   Show,
   batch,
@@ -13,6 +13,10 @@ import {
   AudioSettingsConfig,
   AudioStats,
   CalibrationResult,
+  getAudioDevices,
+  getAudioSettings,
+  getAudioStats,
+  playTestSound,
 } from "../bridge";
 
 import ModeSwitch from "../components/audio/ModeSwitch";
@@ -30,17 +34,7 @@ import JitterSettings from "../components/audio/JitterSettings";
 
 import styles from "./AudioSettings.module.css";
 
-// ---- Mock-Geräteliste ----
-const MOCK_DEVICES: AudioDevice[] = [
-  { id: "mic-1", name: "Standardmikrofon (Realtek)", kind: "input", is_default: true },
-  { id: "mic-2", name: "USB-Headset (Logitech G Pro)", kind: "input", is_default: false },
-  { id: "mic-3", name: "Eingebautes Mikrofon", kind: "input", is_default: false },
-  { id: "out-1", name: "Standardlautsprecher (Realtek)", kind: "output", is_default: true },
-  { id: "out-2", name: "USB-Headset (Logitech G Pro)", kind: "output", is_default: false },
-  { id: "out-3", name: "HDMI Audio (Monitor)", kind: "output", is_default: false },
-];
-
-// ---- Standardwerte ----
+// ---- Fallback-Standardwerte (wenn Backend nicht erreichbar) ----
 const DEFAULT_SETTINGS: AudioSettingsConfig = {
   inputDeviceId: null,
   outputDeviceId: null,
@@ -77,10 +71,10 @@ const DEFAULT_STATS: AudioStats = {
   processedLevel: 0,
   noiseFloor: -60,
   isClipping: false,
-  latency: { device: 12, encoding: 5, jitter: 20, network: 18, total: 55 },
+  latency: { device: 0, encoding: 0, jitter: 0, network: 0, total: 0 },
   packetLoss: 0,
-  rtt: 36,
-  bitrate: 64,
+  rtt: 0,
+  bitrate: 0,
 };
 
 const NOISE_LEVELS = ["off", "low", "medium", "high"] as const;
@@ -89,42 +83,39 @@ export default function AudioSettings() {
   const [mode, setMode] = createSignal<"simple" | "expert">("simple");
   const [settings, setSettings] = createStore<AudioSettingsConfig>(DEFAULT_SETTINGS);
   const [stats, setStats] = createSignal<AudioStats>(DEFAULT_STATS);
+  const [devices, setDevices] = createSignal<AudioDevice[]>([]);
   const [showCalibration, setShowCalibration] = createSignal(false);
   const [noiseLevelIndex, setNoiseLevelIndex] = createSignal(2); // "medium"
 
-  // Simulierte Pegel-Animation
-  let animFrame: number;
-  let lastTime = 0;
-
-  function animateStats(ts: number) {
-    if (ts - lastTime > 50) {
-      lastTime = ts;
-      setStats((prev) => {
-        const base = 0.35 + Math.random() * 0.3;
-        const clip = base > 0.92;
-        return {
-          ...prev,
-          inputLevel: Math.max(0, base + (Math.random() - 0.5) * 0.1),
-          processedLevel: Math.max(0, base * 0.85 + (Math.random() - 0.5) * 0.08),
-          isClipping: clip,
-          noiseFloor: -55 + Math.random() * 3,
-          latency: {
-            ...prev.latency,
-            network: 14 + Math.round(Math.random() * 10),
-            total: prev.latency.device + prev.latency.encoding + prev.latency.jitter + (14 + Math.round(Math.random() * 10)),
-          },
-          rtt: 30 + Math.round(Math.random() * 20),
-          packetLoss: Math.random() * 0.5,
-        };
-      });
+  // Audio-Geraete und Einstellungen beim Start laden
+  onMount(async () => {
+    try {
+      const devList = await getAudioDevices();
+      setDevices(devList);
+    } catch {
+      setDevices([]);
     }
-    animFrame = requestAnimationFrame(animateStats);
-  }
 
-  createEffect(() => {
-    animFrame = requestAnimationFrame(animateStats);
-    onCleanup(() => cancelAnimationFrame(animFrame));
+    try {
+      const saved = await getAudioSettings();
+      setSettings(produce((s) => { Object.assign(s, saved); }));
+      const noiseIdx = NOISE_LEVELS.indexOf(saved.noiseSuppression as typeof NOISE_LEVELS[number]);
+      if (noiseIdx >= 0) setNoiseLevelIndex(noiseIdx);
+    } catch {
+      // Fallback auf lokale Defaults
+    }
   });
+
+  // Audio-Stats polling (5x pro Sekunde)
+  const statsTimer = setInterval(async () => {
+    try {
+      const s = await getAudioStats();
+      setStats(s);
+    } catch {
+      // Backend nicht erreichbar - Stats unveraendert lassen
+    }
+  }, 200);
+  onCleanup(() => clearInterval(statsTimer));
 
   // Einstellungs-Helpers
   function updateCodec<K extends keyof AudioSettingsConfig["codec"]>(
@@ -184,7 +175,7 @@ export default function AudioSettings() {
       {/* Breadcrumb */}
       <div class={styles.breadcrumb}>
         <A href="/settings" class={styles.breadcrumbLink}>Einstellungen</A>
-        <span class={styles.breadcrumbSep}>›</span>
+        <span class={styles.breadcrumbSep}>&#x203a;</span>
         <span>Audio</span>
       </div>
 
@@ -202,18 +193,18 @@ export default function AudioSettings() {
             <DeviceSelector
               label="Mikrofon"
               kind="input"
-              devices={MOCK_DEVICES}
+              devices={devices()}
               selectedId={settings.inputDeviceId}
               onChange={(id) => setSettings("inputDeviceId", id)}
-              onTest={() => console.log("Mikrofon-Test")}
+              onTest={async () => { try { await playTestSound(); } catch {} }}
             />
             <DeviceSelector
               label="Ausgabe"
               kind="output"
-              devices={MOCK_DEVICES}
+              devices={devices()}
               selectedId={settings.outputDeviceId}
               onChange={(id) => setSettings("outputDeviceId", id)}
-              onTest={() => console.log("Ausgabe-Test")}
+              onTest={async () => { try { await playTestSound(); } catch {} }}
             />
           </div>
         </section>
@@ -227,7 +218,7 @@ export default function AudioSettings() {
               pttKey={settings.pttKey}
               vadSensitivity={settings.vadSensitivity}
               onModeChange={(m) => setSettings("voiceMode", m)}
-              onPttKeyChange={() => console.log("PTT-Taste andern")}
+              onPttKeyChange={() => {}}
               onVadSensitivityChange={(v) => setSettings("vadSensitivity", v)}
             />
           </div>
@@ -273,7 +264,7 @@ export default function AudioSettings() {
           </div>
         </section>
 
-        {/* ---- Lautstärke ---- */}
+        {/* ---- Lautstarke ---- */}
         <section class={styles.section}>
           <h2 class={styles.sectionTitle}>Lautstarke</h2>
           <div class={styles.sectionBody}>
@@ -297,7 +288,7 @@ export default function AudioSettings() {
             />
             <button
               class={styles.testSoundBtn}
-              onClick={() => console.log("Testsignal abspielen")}
+              onClick={async () => { try { await playTestSound(); } catch {} }}
             >
               Testsignal abspielen
             </button>
