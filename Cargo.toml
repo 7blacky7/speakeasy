@@ -11,6 +11,8 @@ members = [
     "crates/audio",
     "crates/commander",
     "crates/chat",
+    "crates/plugin",
+    "crates/crypto",
 ]
 
 [workspace.package]
@@ -40,6 +42,7 @@ async-trait = "0.1"
 tokio-rustls = "0.26"
 rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = "2"
+webpki-roots = "0.26"
 
 # Kryptografie
 argon2 = "0.5"
