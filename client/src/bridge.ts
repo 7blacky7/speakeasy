@@ -403,3 +403,172 @@ export async function setAway(
 ): Promise<void> {
   return invoke("set_away", { away, message: message ?? null });
 }
+
+// --- Admin REST-API Funktionen (Phase 8.5) ---
+
+// Typen fuer Admin-API
+
+export interface AdminClientInfo {
+  id: string;
+  username: string;
+  channel_id: string | null;
+  channel_name: string | null;
+  connected_since: string | null;
+  ip: string | null;
+}
+
+export interface BanRecord {
+  id: string;
+  user_id: string | null;
+  ip: string | null;
+  reason: string;
+  banned_by: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface ServerGroupRecord {
+  id: string;
+  name: string;
+  priority: number;
+  is_default: boolean;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  aktor_id: string | null;
+  aktion: string;
+  ziel_typ: string | null;
+  ziel_id: string | null;
+  zeitstempel: string;
+  details: Record<string, unknown>;
+}
+
+export interface InviteRecord {
+  id: string;
+  code: string;
+  channel_id: string | null;
+  assigned_group_id: string | null;
+  max_uses: number;
+  used_count: number;
+  expires_at: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface AdminServerInfo {
+  name: string;
+  version: string;
+  uptime_secs: number;
+  online_clients: number;
+  max_clients: number;
+}
+
+// Hilfs-Klasse fuer Admin-REST-Requests
+
+let adminApiBase = "";
+let adminToken = "";
+
+export function setAdminApiConfig(base: string, token: string) {
+  adminApiBase = base;
+  adminToken = token;
+}
+
+async function adminFetch<T>(
+  path: string,
+  method: string = "GET",
+  body?: unknown
+): Promise<T> {
+  const opts: RequestInit = {
+    method,
+    headers: {
+      "Authorization": `Bearer ${adminToken}`,
+      "Content-Type": "application/json",
+    },
+  };
+  if (body !== undefined) {
+    opts.body = JSON.stringify(body);
+  }
+  const resp = await fetch(`${adminApiBase}${path}`, opts);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: resp.statusText }));
+    throw new Error(err.error?.message ?? err.error ?? `HTTP ${resp.status}`);
+  }
+  if (resp.status === 204) return undefined as T;
+  return resp.json();
+}
+
+// Server-Info
+export async function adminGetServer(): Promise<AdminServerInfo> {
+  return adminFetch("/v1/server");
+}
+
+// Server-Einstellungen aktualisieren
+export async function adminUpdateServer(data: {
+  name?: string;
+  willkommensnachricht?: string;
+  max_clients?: number;
+}): Promise<void> {
+  return adminFetch("/v1/server", "PUT", data);
+}
+
+// Client-Liste
+export async function adminGetClients(): Promise<AdminClientInfo[]> {
+  const resp = await adminFetch<{ clients: AdminClientInfo[] }>("/v1/clients");
+  return resp.clients ?? [];
+}
+
+// Client kicken
+export async function adminKickClient(
+  clientId: string,
+  grund?: string
+): Promise<void> {
+  return adminFetch(`/v1/clients/${clientId}/kick`, "POST", { grund });
+}
+
+// Client bannen
+export async function adminBanClient(
+  clientId: string,
+  dauer_secs?: number,
+  grund?: string
+): Promise<void> {
+  return adminFetch(`/v1/clients/${clientId}/ban`, "POST", {
+    grund,
+    dauer_secs,
+  });
+}
+
+// Client verschieben
+export async function adminMoveClient(
+  clientId: string,
+  kanalId: string
+): Promise<void> {
+  return adminFetch(`/v1/clients/${clientId}/move`, "POST", {
+    kanal_id: kanalId,
+  });
+}
+
+// Client poken
+export async function adminPokeClient(
+  clientId: string,
+  nachricht: string
+): Promise<void> {
+  return adminFetch(`/v1/clients/${clientId}/poke`, "POST", { nachricht });
+}
+
+// Audit-Log
+export async function adminGetLogs(
+  limit?: number,
+  offset?: number,
+  aktion?: string
+): Promise<AuditLogEntry[]> {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+  if (aktion) params.set("aktion", aktion);
+  const qs = params.toString();
+  const resp = await adminFetch<{ eintraege: AuditLogEntry[] }>(
+    `/v1/logs${qs ? "?" + qs : ""}`
+  );
+  return resp.eintraege ?? [];
+}

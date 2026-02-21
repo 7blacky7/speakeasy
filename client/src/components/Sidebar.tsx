@@ -12,6 +12,9 @@ export default function Sidebar() {
         <A href="/settings" class={styles.navBtn} title="Einstellungen" activeClass={styles.active}>
           Einstellungen
         </A>
+        <A href="/admin" class={styles.navBtn} title="Server-Administration" activeClass={styles.active}>
+          Administration
+        </A>
       </div>
     </aside>
   );
