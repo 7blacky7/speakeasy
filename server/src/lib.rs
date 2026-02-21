@@ -10,9 +10,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use config::ServerConfig;
 
-use speakeasy_auth::{
-    ApiTokenStore, AuthService, BanService, PermissionService, SessionStore,
-};
+use speakeasy_auth::{ApiTokenStore, AuthService, BanService, PermissionService, SessionStore};
 use speakeasy_db::{
     repository::{DatabaseBackend, DatabaseConfig, UserRepository},
     SqliteDb,

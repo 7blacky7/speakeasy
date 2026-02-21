@@ -72,7 +72,13 @@ fn decrypt_aes256gcm(
     let nonce = AesNonce::from_slice(nonce_bytes);
 
     cipher
-        .decrypt(nonce, Payload { msg: ciphertext, aad })
+        .decrypt(
+            nonce,
+            Payload {
+                msg: ciphertext,
+                aad,
+            },
+        )
         .map_err(|e| CryptoError::Entschluesselung(e.to_string()))
 }
 
@@ -94,7 +100,13 @@ fn decrypt_chacha20(
     let nonce = ChaChaNonce::from_slice(nonce_bytes);
 
     cipher
-        .decrypt(nonce, chacha20poly1305::aead::Payload { msg: ciphertext, aad })
+        .decrypt(
+            nonce,
+            chacha20poly1305::aead::Payload {
+                msg: ciphertext,
+                aad,
+            },
+        )
         .map_err(|e| CryptoError::Entschluesselung(e.to_string()))
 }
 

@@ -7,11 +7,11 @@ use uuid::Uuid;
 
 use crate::error::DbError;
 use crate::models::{
-    AuditLogFilter, AuditLogRecord, BanRecord, BenutzerRecord, BenutzerUpdate,
-    BerechtigungsWert, BerechtigungsZiel, ChatNachrichtRecord, DateiKontingentRecord,
-    DateiRecord, EffektiveBerechtigung, EinladungRecord, KanalGruppeRecord, KanalRecord,
-    KanalUpdate, NachrichtenFilter, NeueDatei, NeueEinladung, NeueKanalGruppe, NeuerBan,
-    NeuerBenutzer, NeuerKanal, NeueNachricht, NeueServerGruppe, ServerGruppeRecord,
+    AuditLogFilter, AuditLogRecord, BanRecord, BenutzerRecord, BenutzerUpdate, BerechtigungsWert,
+    BerechtigungsZiel, ChatNachrichtRecord, DateiKontingentRecord, DateiRecord,
+    EffektiveBerechtigung, EinladungRecord, KanalGruppeRecord, KanalRecord, KanalUpdate,
+    NachrichtenFilter, NeueDatei, NeueEinladung, NeueKanalGruppe, NeueNachricht, NeueServerGruppe,
+    NeuerBan, NeuerBenutzer, NeuerKanal, ServerGruppeRecord,
 };
 
 pub type DbResult<T> = Result<T, DbError>;
@@ -229,11 +229,7 @@ pub trait ChannelGroupRepository: Send + Sync {
     ) -> DbResult<()>;
 
     /// Kanal-Gruppen-Zuweisung aufheben
-    async fn remove_member_group(
-        &self,
-        user_id: Uuid,
-        channel_id: Uuid,
-    ) -> DbResult<bool>;
+    async fn remove_member_group(&self, user_id: Uuid, channel_id: Uuid) -> DbResult<bool>;
 
     /// Kanal-Gruppe loeschen
     async fn delete(&self, id: Uuid) -> DbResult<bool>;
@@ -259,7 +255,11 @@ pub trait BanRepository: Send + Sync {
     async fn remove(&self, id: Uuid) -> DbResult<bool>;
 
     /// Pruefen ob ein User oder eine IP aktuell gebannt ist
-    async fn is_banned(&self, user_id: Option<Uuid>, ip: Option<&str>) -> DbResult<Option<BanRecord>>;
+    async fn is_banned(
+        &self,
+        user_id: Option<Uuid>,
+        ip: Option<&str>,
+    ) -> DbResult<Option<BanRecord>>;
 
     /// Abgelaufene Bans bereinigen
     async fn cleanup_expired(&self) -> DbResult<u64>;

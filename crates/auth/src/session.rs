@@ -4,11 +4,7 @@
 //! Sessions werden im Speicher gehalten (in-memory HashMap mit TTL).
 //! Ein Hintergrund-Task bereinigt abgelaufene Sessions automatisch.
 
-use std::{
-    collections::HashMap,
-    sync::Arc,
-    time::Duration,
-};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
 use rand::RngCore;
@@ -155,11 +151,17 @@ mod tests {
         let store = SessionStore::neu();
         let user_id = Uuid::new_v4();
 
-        let session = store.erstellen(user_id).await.expect("Session-Erstellung fehlgeschlagen");
+        let session = store
+            .erstellen(user_id)
+            .await
+            .expect("Session-Erstellung fehlgeschlagen");
         assert_eq!(session.user_id, user_id);
         assert!(session.ist_gueltig());
 
-        let validiert = store.validieren(&session.token).await.expect("Validierung fehlgeschlagen");
+        let validiert = store
+            .validieren(&session.token)
+            .await
+            .expect("Validierung fehlgeschlagen");
         assert_eq!(validiert.user_id, user_id);
     }
 

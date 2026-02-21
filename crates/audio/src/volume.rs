@@ -3,8 +3,8 @@
 //! Verwaltet Master-Lautstaerke, per-User Lautstaerke, Muting
 //! und sanfte Lautstaerke-Uebergaenge (keine Klicks).
 
-use std::collections::HashMap;
 use speakeasy_core::types::UserId;
+use std::collections::HashMap;
 
 /// Lautstaerke-Kontroller fuer Playback-Mixing
 pub struct VolumeController {
@@ -95,7 +95,11 @@ impl VolumeController {
         self.master_volume =
             self.smoothing * self.master_volume + (1.0 - self.smoothing) * self.master_target;
 
-        let effective_master = if self.master_muted { 0.0 } else { self.master_volume };
+        let effective_master = if self.master_muted {
+            0.0
+        } else {
+            self.master_volume
+        };
 
         // User-Lautstaerke glaetten
         let target = *self.user_targets.get(&user).unwrap_or(&1.0);
@@ -163,7 +167,10 @@ mod tests {
         vc.set_master_muted(true);
         let mut samples = vec![1.0f32; 480];
         vc.apply(u, &mut samples);
-        assert!(samples.iter().all(|&s| s == 0.0), "Master Mute sollte alles auf 0 setzen");
+        assert!(
+            samples.iter().all(|&s| s == 0.0),
+            "Master Mute sollte alles auf 0 setzen"
+        );
     }
 
     #[test]
@@ -173,7 +180,10 @@ mod tests {
         vc.set_user_muted(u, true);
         let mut samples = vec![1.0f32; 480];
         vc.apply(u, &mut samples);
-        assert!(samples.iter().all(|&s| s == 0.0), "User Mute sollte auf 0 setzen");
+        assert!(
+            samples.iter().all(|&s| s == 0.0),
+            "User Mute sollte auf 0 setzen"
+        );
     }
 
     #[test]
@@ -187,7 +197,11 @@ mod tests {
         vc.apply(u, &mut samples);
         // Bei smoothing=0: sofort auf Zielwert
         for s in &samples {
-            assert!((*s - 0.5).abs() < 0.01, "Lautstaerke 0.5 erwartet, war {}", s);
+            assert!(
+                (*s - 0.5).abs() < 0.01,
+                "Lautstaerke 0.5 erwartet, war {}",
+                s
+            );
         }
     }
 

@@ -6,17 +6,22 @@ use speakeasy_db::{
 };
 
 async fn db() -> SqliteDb {
-    SqliteDb::in_memory().await.expect("In-Memory DB konnte nicht erstellt werden")
+    SqliteDb::in_memory()
+        .await
+        .expect("In-Memory DB konnte nicht erstellt werden")
 }
 
 #[tokio::test]
 async fn benutzer_erstellen_und_laden() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "alice",
-        password_hash: "hash_alice",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "alice",
+            password_hash: "hash_alice",
+        },
+    )
     .await
     .expect("Benutzer erstellen fehlgeschlagen");
 
@@ -36,10 +41,13 @@ async fn benutzer_erstellen_und_laden() {
 async fn benutzer_nach_name_laden() {
     let db = db().await;
 
-    UserRepository::create(&db, NeuerBenutzer {
-        username: "bob",
-        password_hash: "hash_bob",
-    })
+    UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "bob",
+            password_hash: "hash_bob",
+        },
+    )
     .await
     .unwrap();
 
@@ -58,17 +66,23 @@ async fn benutzer_nach_name_laden() {
 async fn benutzer_username_unique() {
     let db = db().await;
 
-    UserRepository::create(&db, NeuerBenutzer {
-        username: "charlie",
-        password_hash: "hash1",
-    })
+    UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "charlie",
+            password_hash: "hash1",
+        },
+    )
     .await
     .unwrap();
 
-    let err = UserRepository::create(&db, NeuerBenutzer {
-        username: "charlie",
-        password_hash: "hash2",
-    })
+    let err = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "charlie",
+            password_hash: "hash2",
+        },
+    )
     .await;
 
     assert!(err.is_err());
@@ -79,10 +93,13 @@ async fn benutzer_username_unique() {
 async fn benutzer_aktualisieren() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "dave",
-        password_hash: "alt_hash",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "dave",
+            password_hash: "alt_hash",
+        },
+    )
     .await
     .unwrap();
 
@@ -105,10 +122,13 @@ async fn benutzer_aktualisieren() {
 async fn benutzer_loeschen_weich() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "eve",
-        password_hash: "hash_eve",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "eve",
+            password_hash: "hash_eve",
+        },
+    )
     .await
     .unwrap();
 
@@ -116,7 +136,10 @@ async fn benutzer_loeschen_weich() {
     assert!(geloescht);
 
     // Benutzer ist noch vorhanden, aber inaktiv
-    let geladen = UserRepository::get_by_id(&db, user.id).await.unwrap().unwrap();
+    let geladen = UserRepository::get_by_id(&db, user.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert!(!geladen.is_active);
 
     // Nur aktive Benutzer auflisten
@@ -128,10 +151,13 @@ async fn benutzer_loeschen_weich() {
 async fn benutzer_authentifizieren() {
     let db = db().await;
 
-    UserRepository::create(&db, NeuerBenutzer {
-        username: "frank",
-        password_hash: "korrekt_hash",
-    })
+    UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "frank",
+            password_hash: "korrekt_hash",
+        },
+    )
     .await
     .unwrap();
 
@@ -159,10 +185,13 @@ async fn benutzer_auflisten() {
     let db = db().await;
 
     for name in &["user1", "user2", "user3"] {
-        UserRepository::create(&db, NeuerBenutzer {
-            username: name,
-            password_hash: "hash",
-        })
+        UserRepository::create(
+            &db,
+            NeuerBenutzer {
+                username: name,
+                password_hash: "hash",
+            },
+        )
         .await
         .unwrap();
     }
@@ -175,17 +204,25 @@ async fn benutzer_auflisten() {
 async fn last_login_aktualisieren() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "grace",
-        password_hash: "hash",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "grace",
+            password_hash: "hash",
+        },
+    )
     .await
     .unwrap();
 
     assert!(user.last_login.is_none());
 
-    UserRepository::update_last_login(&db, user.id).await.unwrap();
+    UserRepository::update_last_login(&db, user.id)
+        .await
+        .unwrap();
 
-    let aktualisiert = UserRepository::get_by_id(&db, user.id).await.unwrap().unwrap();
+    let aktualisiert = UserRepository::get_by_id(&db, user.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert!(aktualisiert.last_login.is_some());
 }

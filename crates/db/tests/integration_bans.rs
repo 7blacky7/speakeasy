@@ -7,24 +7,35 @@ use speakeasy_db::{
 };
 
 async fn db() -> SqliteDb {
-    SqliteDb::in_memory().await.expect("In-Memory DB konnte nicht erstellt werden")
+    SqliteDb::in_memory()
+        .await
+        .expect("In-Memory DB konnte nicht erstellt werden")
 }
 
 #[tokio::test]
 async fn ban_erstellen_und_laden() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "troll", password_hash: "hash" })
-        .await
-        .unwrap();
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "troll",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap();
 
-    let ban = BanRepository::create(&db, NeuerBan {
-        user_id: Some(user.id),
-        ip: None,
-        reason: "Regelverstos",
-        banned_by: None,
-        expires_at: None,
-    })
+    let ban = BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: Some(user.id),
+            ip: None,
+            reason: "Regelverstos",
+            banned_by: None,
+            expires_at: None,
+        },
+    )
     .await
     .unwrap();
 
@@ -40,27 +51,46 @@ async fn ban_erstellen_und_laden() {
 async fn ban_pruefen_user_id() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "gesperrt", password_hash: "hash" })
-        .await
-        .unwrap();
-
-    BanRepository::create(&db, NeuerBan {
-        user_id: Some(user.id),
-        ip: None,
-        reason: "Spam",
-        banned_by: None,
-        expires_at: None,
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "gesperrt",
+            password_hash: "hash",
+        },
+    )
     .await
     .unwrap();
 
-    let ist_gebannt = BanRepository::is_banned(&db, Some(user.id), None).await.unwrap();
-    assert!(ist_gebannt.is_some());
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: Some(user.id),
+            ip: None,
+            reason: "Spam",
+            banned_by: None,
+            expires_at: None,
+        },
+    )
+    .await
+    .unwrap();
 
-    let anderer_user = UserRepository::create(&db, NeuerBenutzer { username: "unschuldig", password_hash: "hash" })
+    let ist_gebannt = BanRepository::is_banned(&db, Some(user.id), None)
         .await
         .unwrap();
-    let nicht_gebannt = BanRepository::is_banned(&db, Some(anderer_user.id), None).await.unwrap();
+    assert!(ist_gebannt.is_some());
+
+    let anderer_user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "unschuldig",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap();
+    let nicht_gebannt = BanRepository::is_banned(&db, Some(anderer_user.id), None)
+        .await
+        .unwrap();
     assert!(nicht_gebannt.is_none());
 }
 
@@ -68,20 +98,27 @@ async fn ban_pruefen_user_id() {
 async fn ban_pruefen_ip() {
     let db = db().await;
 
-    BanRepository::create(&db, NeuerBan {
-        user_id: None,
-        ip: Some("192.168.1.100"),
-        reason: "IP-Ban",
-        banned_by: None,
-        expires_at: None,
-    })
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: None,
+            ip: Some("192.168.1.100"),
+            reason: "IP-Ban",
+            banned_by: None,
+            expires_at: None,
+        },
+    )
     .await
     .unwrap();
 
-    let ist_gebannt = BanRepository::is_banned(&db, None, Some("192.168.1.100")).await.unwrap();
+    let ist_gebannt = BanRepository::is_banned(&db, None, Some("192.168.1.100"))
+        .await
+        .unwrap();
     assert!(ist_gebannt.is_some());
 
-    let andere_ip = BanRepository::is_banned(&db, None, Some("10.0.0.1")).await.unwrap();
+    let andere_ip = BanRepository::is_banned(&db, None, Some("10.0.0.1"))
+        .await
+        .unwrap();
     assert!(andere_ip.is_none());
 }
 
@@ -89,24 +126,35 @@ async fn ban_pruefen_ip() {
 async fn ban_entfernen() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "begnadigt", password_hash: "hash" })
-        .await
-        .unwrap();
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "begnadigt",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap();
 
-    let ban = BanRepository::create(&db, NeuerBan {
-        user_id: Some(user.id),
-        ip: None,
-        reason: "Versehen",
-        banned_by: None,
-        expires_at: None,
-    })
+    let ban = BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: Some(user.id),
+            ip: None,
+            reason: "Versehen",
+            banned_by: None,
+            expires_at: None,
+        },
+    )
     .await
     .unwrap();
 
     let entfernt = BanRepository::remove(&db, ban.id).await.unwrap();
     assert!(entfernt);
 
-    let nach_entfernung = BanRepository::is_banned(&db, Some(user.id), None).await.unwrap();
+    let nach_entfernung = BanRepository::is_banned(&db, Some(user.id), None)
+        .await
+        .unwrap();
     assert!(nach_entfernung.is_none());
 }
 
@@ -114,45 +162,65 @@ async fn ban_entfernen() {
 async fn ban_abgelaufener_wird_ignoriert() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "abgelaufen_user", password_hash: "hash" })
-        .await
-        .unwrap();
-
-    BanRepository::create(&db, NeuerBan {
-        user_id: Some(user.id),
-        ip: None,
-        reason: "Temporaer",
-        banned_by: None,
-        expires_at: Some(Utc::now() - Duration::hours(1)),
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "abgelaufen_user",
+            password_hash: "hash",
+        },
+    )
     .await
     .unwrap();
 
-    let ist_gebannt = BanRepository::is_banned(&db, Some(user.id), None).await.unwrap();
-    assert!(ist_gebannt.is_none(), "Abgelaufener Ban sollte nicht als aktiv gelten");
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: Some(user.id),
+            ip: None,
+            reason: "Temporaer",
+            banned_by: None,
+            expires_at: Some(Utc::now() - Duration::hours(1)),
+        },
+    )
+    .await
+    .unwrap();
+
+    let ist_gebannt = BanRepository::is_banned(&db, Some(user.id), None)
+        .await
+        .unwrap();
+    assert!(
+        ist_gebannt.is_none(),
+        "Abgelaufener Ban sollte nicht als aktiv gelten"
+    );
 }
 
 #[tokio::test]
 async fn ban_cleanup_abgelaufene() {
     let db = db().await;
 
-    BanRepository::create(&db, NeuerBan {
-        user_id: None,
-        ip: Some("1.2.3.4"),
-        reason: "Alt",
-        banned_by: None,
-        expires_at: Some(Utc::now() - Duration::days(1)),
-    })
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: None,
+            ip: Some("1.2.3.4"),
+            reason: "Alt",
+            banned_by: None,
+            expires_at: Some(Utc::now() - Duration::days(1)),
+        },
+    )
     .await
     .unwrap();
 
-    BanRepository::create(&db, NeuerBan {
-        user_id: None,
-        ip: Some("5.6.7.8"),
-        reason: "Aktuell",
-        banned_by: None,
-        expires_at: None,
-    })
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: None,
+            ip: Some("5.6.7.8"),
+            reason: "Aktuell",
+            banned_by: None,
+            expires_at: None,
+        },
+    )
     .await
     .unwrap();
 
@@ -168,23 +236,29 @@ async fn ban_cleanup_abgelaufene() {
 async fn ban_auflisten_nur_aktive() {
     let db = db().await;
 
-    BanRepository::create(&db, NeuerBan {
-        user_id: None,
-        ip: Some("9.9.9.9"),
-        reason: "Abgelaufen",
-        banned_by: None,
-        expires_at: Some(Utc::now() - Duration::seconds(1)),
-    })
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: None,
+            ip: Some("9.9.9.9"),
+            reason: "Abgelaufen",
+            banned_by: None,
+            expires_at: Some(Utc::now() - Duration::seconds(1)),
+        },
+    )
     .await
     .unwrap();
 
-    BanRepository::create(&db, NeuerBan {
-        user_id: None,
-        ip: Some("8.8.8.8"),
-        reason: "Aktiv",
-        banned_by: None,
-        expires_at: None,
-    })
+    BanRepository::create(
+        &db,
+        NeuerBan {
+            user_id: None,
+            ip: Some("8.8.8.8"),
+            reason: "Aktiv",
+            banned_by: None,
+            expires_at: None,
+        },
+    )
     .await
     .unwrap();
 

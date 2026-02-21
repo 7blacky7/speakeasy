@@ -220,12 +220,7 @@ impl AdaptiveJitterBuffer {
             if seq > erwartet {
                 let verlust = seq.wrapping_sub(erwartet) as u64;
                 self.statistik.verloren += verlust;
-                tracing::debug!(
-                    erwartet,
-                    erhalten = seq,
-                    verlust,
-                    "Paket-Luecke erkannt"
-                );
+                tracing::debug!(erwartet, erhalten = seq, verlust, "Paket-Luecke erkannt");
             }
         }
 
@@ -371,7 +366,11 @@ mod tests {
         while let Some(p) = buf.pop() {
             seqs.push(p.header.sequence);
         }
-        assert_eq!(seqs, vec![0, 1, 2, 3, 4], "Out-of-Order nicht korrekt sortiert");
+        assert_eq!(
+            seqs,
+            vec![0, 1, 2, 3, 4],
+            "Out-of-Order nicht korrekt sortiert"
+        );
     }
 
     #[test]

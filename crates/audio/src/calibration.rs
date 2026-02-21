@@ -119,7 +119,10 @@ mod tests {
     fn kalibrierung_stille() {
         let samples = vec![0.001f32; 48000]; // 1 Sekunde Stille
         let result = calibrate_from_samples(&samples, 480).unwrap();
-        assert!(result.noise_floor_db < -40.0, "Stille sollte niedrigen Pegel haben");
+        assert!(
+            result.noise_floor_db < -40.0,
+            "Stille sollte niedrigen Pegel haben"
+        );
         assert!(result.suggested_gate_threshold_db > result.noise_floor_db);
         assert!(result.frames_measured > 0);
     }
@@ -140,7 +143,10 @@ mod tests {
     fn kalibrierung_lautes_signal() {
         let samples = vec![0.5f32; 48000];
         let result = calibrate_from_samples(&samples, 480).unwrap();
-        assert!(result.noise_floor_db > -20.0, "Lautes Signal sollte hohen Pegel haben");
+        assert!(
+            result.noise_floor_db > -20.0,
+            "Lautes Signal sollte hohen Pegel haben"
+        );
     }
 
     #[test]

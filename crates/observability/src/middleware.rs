@@ -102,7 +102,10 @@ mod tests {
 
     #[test]
     fn alle_buckets_abgedeckt() {
-        let faelle = [0u64, 1, 2, 5, 6, 10, 11, 25, 26, 50, 51, 100, 101, 250, 251, 500, 501, 1000, 1001, 9999];
+        let faelle = [
+            0u64, 1, 2, 5, 6, 10, 11, 25, 26, 50, 51, 100, 101, 250, 251, 500, 501, 1000, 1001,
+            9999,
+        ];
         for &ms in &faelle {
             let bucket = dauer_bucket(ms);
             assert!(!bucket.is_empty(), "Leerer Bucket fuer {ms}ms");

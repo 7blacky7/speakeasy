@@ -35,17 +35,17 @@ async fn test_store_erstellt_verzeichnis() {
         .await
         .expect("Speichern mit tiefem Pfad fehlgeschlagen");
 
-    assert!(dir.path().join("unterverzeichnis/noch_tiefer/datei.bin").exists());
+    assert!(dir
+        .path()
+        .join("unterverzeichnis/noch_tiefer/datei.bin")
+        .exists());
 }
 
 #[tokio::test]
 async fn test_delete_entfernt_datei() {
     let (storage, dir) = temp_storage();
 
-    storage
-        .store("zu_loeschen.txt", b"inhalt")
-        .await
-        .unwrap();
+    storage.store("zu_loeschen.txt", b"inhalt").await.unwrap();
 
     assert!(dir.path().join("zu_loeschen.txt").exists());
 
@@ -90,10 +90,7 @@ async fn test_binaere_daten_intakt() {
     let (storage, _dir) = temp_storage();
 
     let binaerdaten: Vec<u8> = (0u8..=255).collect();
-    storage
-        .store("binaer.bin", &binaerdaten)
-        .await
-        .unwrap();
+    storage.store("binaer.bin", &binaerdaten).await.unwrap();
 
     let gelesen = storage.retrieve("binaer.bin").await.unwrap();
     assert_eq!(gelesen, binaerdaten);

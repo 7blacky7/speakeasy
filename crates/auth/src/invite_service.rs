@@ -27,9 +27,7 @@ pub struct InviteService<I: InviteRepository, U: UserRepository, G: ServerGroupR
     group_repo: Arc<G>,
 }
 
-impl<I: InviteRepository, U: UserRepository, G: ServerGroupRepository>
-    InviteService<I, U, G>
-{
+impl<I: InviteRepository, U: UserRepository, G: ServerGroupRepository> InviteService<I, U, G> {
     /// Erstellt einen neuen InviteService
     pub fn neu(invite_repo: Arc<I>, user_repo: Arc<U>, group_repo: Arc<G>) -> Arc<Self> {
         Arc::new(Self {
@@ -182,11 +180,13 @@ fn invite_code_generieren() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
     use speakeasy_db::{
-        models::{BenutzerRecord, NeuerBenutzer, BenutzerUpdate, ServerGruppeRecord, NeueServerGruppe},
-        repository::{DbResult, UserRepository, ServerGroupRepository},
+        models::{
+            BenutzerRecord, BenutzerUpdate, NeueServerGruppe, NeuerBenutzer, ServerGruppeRecord,
+        },
+        repository::{DbResult, ServerGroupRepository, UserRepository},
     };
+    use std::sync::Mutex;
 
     #[derive(Default)]
     struct TestUserRepo {
@@ -207,22 +207,40 @@ mod tests {
             Ok(record)
         }
         async fn get_by_id(&self, id: Uuid) -> DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter().find(|u| u.id == id).cloned())
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.id == id)
+                .cloned())
         }
         async fn get_by_name(&self, username: &str) -> DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter().find(|u| u.username == username).cloned())
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.username == username)
+                .cloned())
         }
         async fn update(&self, id: Uuid, _data: BenutzerUpdate) -> DbResult<BenutzerRecord> {
-            self.get_by_id(id).await?.ok_or_else(|| DbError::nicht_gefunden(id.to_string()))
+            self.get_by_id(id)
+                .await?
+                .ok_or_else(|| DbError::nicht_gefunden(id.to_string()))
         }
-        async fn delete(&self, _id: Uuid) -> DbResult<bool> { Ok(false) }
+        async fn delete(&self, _id: Uuid) -> DbResult<bool> {
+            Ok(false)
+        }
         async fn list(&self, _nur_aktive: bool) -> DbResult<Vec<BenutzerRecord>> {
             Ok(self.benutzer.lock().unwrap().clone())
         }
         async fn authenticate(&self, _u: &str, _p: &str) -> DbResult<Option<BenutzerRecord>> {
             Ok(None)
         }
-        async fn update_last_login(&self, _id: Uuid) -> DbResult<()> { Ok(()) }
+        async fn update_last_login(&self, _id: Uuid) -> DbResult<()> {
+            Ok(())
+        }
     }
 
     #[derive(Default)]
@@ -234,8 +252,12 @@ mod tests {
         async fn create(&self, _data: NeueServerGruppe<'_>) -> DbResult<ServerGruppeRecord> {
             unimplemented!()
         }
-        async fn get(&self, _id: Uuid) -> DbResult<Option<ServerGruppeRecord>> { Ok(None) }
-        async fn list(&self) -> DbResult<Vec<ServerGruppeRecord>> { Ok(vec![]) }
+        async fn get(&self, _id: Uuid) -> DbResult<Option<ServerGruppeRecord>> {
+            Ok(None)
+        }
+        async fn list(&self) -> DbResult<Vec<ServerGruppeRecord>> {
+            Ok(vec![])
+        }
         async fn list_for_user(&self, _user_id: Uuid) -> DbResult<Vec<ServerGruppeRecord>> {
             Ok(vec![])
         }
@@ -246,8 +268,12 @@ mod tests {
         async fn remove_member(&self, _group_id: Uuid, _user_id: Uuid) -> DbResult<bool> {
             Ok(false)
         }
-        async fn get_default(&self) -> DbResult<Option<ServerGruppeRecord>> { Ok(None) }
-        async fn delete(&self, _id: Uuid) -> DbResult<bool> { Ok(false) }
+        async fn get_default(&self) -> DbResult<Option<ServerGruppeRecord>> {
+            Ok(None)
+        }
+        async fn delete(&self, _id: Uuid) -> DbResult<bool> {
+            Ok(false)
+        }
     }
 
     #[derive(Default)]
@@ -272,16 +298,30 @@ mod tests {
             Ok(record)
         }
         async fn get(&self, id: Uuid) -> DbResult<Option<EinladungRecord>> {
-            Ok(self.einladungen.lock().unwrap().iter().find(|e| e.id == id).cloned())
+            Ok(self
+                .einladungen
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|e| e.id == id)
+                .cloned())
         }
         async fn get_by_code(&self, code: &str) -> DbResult<Option<EinladungRecord>> {
-            Ok(self.einladungen.lock().unwrap().iter().find(|e| e.code == code).cloned())
+            Ok(self
+                .einladungen
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|e| e.code == code)
+                .cloned())
         }
         async fn list(&self, created_by: Option<Uuid>) -> DbResult<Vec<EinladungRecord>> {
             let einladungen = self.einladungen.lock().unwrap();
-            Ok(einladungen.iter().filter(|e| {
-                created_by.is_none_or(|id| e.created_by == id)
-            }).cloned().collect())
+            Ok(einladungen
+                .iter()
+                .filter(|e| created_by.is_none_or(|id| e.created_by == id))
+                .cloned()
+                .collect())
         }
         async fn use_invite(&self, code: &str) -> DbResult<Option<EinladungRecord>> {
             let mut einladungen = self.einladungen.lock().unwrap();
@@ -314,7 +354,10 @@ mod tests {
     ) {
         let user_repo = Arc::new(TestUserRepo::default());
         let ersteller = user_repo
-            .create(NeuerBenutzer { username: "ersteller", password_hash: "hash" })
+            .create(NeuerBenutzer {
+                username: "ersteller",
+                password_hash: "hash",
+            })
             .await
             .unwrap();
 
@@ -341,7 +384,10 @@ mod tests {
         assert_eq!(einladung.code.len(), INVITE_CODE_LAENGE);
 
         let user_id = Uuid::new_v4();
-        let verwendet = service.einladung_verwenden(&einladung.code, user_id).await.unwrap();
+        let verwendet = service
+            .einladung_verwenden(&einladung.code, user_id)
+            .await
+            .unwrap();
         assert_eq!(verwendet.used_count, 1);
     }
 
@@ -362,9 +408,14 @@ mod tests {
             .await
             .unwrap();
 
-        service.einladung_verwenden(&einladung.code, Uuid::new_v4()).await.unwrap();
+        service
+            .einladung_verwenden(&einladung.code, Uuid::new_v4())
+            .await
+            .unwrap();
 
-        let ergebnis = service.einladung_verwenden(&einladung.code, Uuid::new_v4()).await;
+        let ergebnis = service
+            .einladung_verwenden(&einladung.code, Uuid::new_v4())
+            .await;
         assert!(matches!(ergebnis, Err(AuthError::EinladungErschoepft)));
     }
 
@@ -372,6 +423,8 @@ mod tests {
     fn invite_code_format() {
         let code = invite_code_generieren();
         assert_eq!(code.len(), INVITE_CODE_LAENGE);
-        assert!(code.chars().all(|c| c.is_ascii_alphanumeric() && !matches!(c, '0' | '1' | 'I' | 'O')));
+        assert!(code
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() && !matches!(c, '0' | '1' | 'I' | 'O')));
     }
 }

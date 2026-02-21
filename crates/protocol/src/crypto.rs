@@ -238,10 +238,7 @@ mod tests {
     #[test]
     fn key_exchange_client_hello_serialisierung() {
         let msg = KeyExchangeMessage::ClientHello {
-            supported_key_exchange: vec![
-                KeyExchangeAlgorithm::X25519,
-                KeyExchangeAlgorithm::P256,
-            ],
+            supported_key_exchange: vec![KeyExchangeAlgorithm::X25519, KeyExchangeAlgorithm::P256],
             supported_aead: vec![AeadAlgorithm::Aes256Gcm],
             client_random: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_string(),
             protocol_version: "DTLS1.3".to_string(),
@@ -286,7 +283,10 @@ mod tests {
     #[test]
     fn e2e_group_key_distribute_serialisierung() {
         let mut keys = std::collections::HashMap::new();
-        keys.insert("user-123".to_string(), "encrypted_key_blob_base64".to_string());
+        keys.insert(
+            "user-123".to_string(),
+            "encrypted_key_blob_base64".to_string(),
+        );
         keys.insert("user-456".to_string(), "another_encrypted_key".to_string());
 
         let msg = E2EKeyMessage::GroupKeyDistribute {
@@ -299,7 +299,10 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         let decoded: E2EKeyMessage = serde_json::from_str(&json).unwrap();
-        if let E2EKeyMessage::GroupKeyDistribute { key_id, purpose, .. } = decoded {
+        if let E2EKeyMessage::GroupKeyDistribute {
+            key_id, purpose, ..
+        } = decoded
+        {
             assert_eq!(key_id, 1);
             assert_eq!(purpose, KeyPurpose::Audio);
         } else {
@@ -315,7 +318,11 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         let decoded: E2EKeyMessage = serde_json::from_str(&json).unwrap();
-        if let E2EKeyMessage::KeyRotationRequest { current_key_id, reason } = decoded {
+        if let E2EKeyMessage::KeyRotationRequest {
+            current_key_id,
+            reason,
+        } = decoded
+        {
             assert_eq!(current_key_id, 42);
             assert_eq!(reason, KeyRotationReason::MemberLeft);
         } else {
@@ -332,6 +339,9 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         let decoded: E2EKeyMessage = serde_json::from_str(&json).unwrap();
-        assert!(matches!(decoded, E2EKeyMessage::KeyRevoke { key_id: 7, .. }));
+        assert!(matches!(
+            decoded,
+            E2EKeyMessage::KeyRevoke { key_id: 7, .. }
+        ));
     }
 }

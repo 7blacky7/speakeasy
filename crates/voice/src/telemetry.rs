@@ -246,7 +246,12 @@ impl VoiceTelemetry {
     }
 
     /// Aktualisiert Jitter und Buffer-Fuellstand (vom JitterBuffer)
-    pub fn jitter_aktualisieren(&self, user_id: &UserId, jitter_ticks: u32, buffer_fuellstand: usize) {
+    pub fn jitter_aktualisieren(
+        &self,
+        user_id: &UserId,
+        jitter_ticks: u32,
+        buffer_fuellstand: usize,
+    ) {
         if let Some(entry) = self.inner.clients.get(user_id) {
             let mut m = entry.lock();
             m.jitter_ticks = jitter_ticks;
@@ -286,10 +291,7 @@ impl VoiceTelemetry {
                 ticker.tick().await;
                 let snapshots = telemetry.snapshots_erstellen();
                 if !snapshots.is_empty() {
-                    tracing::info!(
-                        clients = snapshots.len(),
-                        "Telemetrie-Snapshot erstellt"
-                    );
+                    tracing::info!(clients = snapshots.len(), "Telemetrie-Snapshot erstellt");
                 }
             }
         })
@@ -335,7 +337,10 @@ mod tests {
         assert_eq!(snapshots.len(), 1);
 
         let snap = &snapshots[0];
-        assert!((snap.rtt_ms_avg - 30.0).abs() < 0.01, "Durchschnitt sollte 30ms sein");
+        assert!(
+            (snap.rtt_ms_avg - 30.0).abs() < 0.01,
+            "Durchschnitt sollte 30ms sein"
+        );
         assert_eq!(snap.rtt_ms_min, 20);
         assert_eq!(snap.rtt_ms_max, 40);
     }
@@ -348,13 +353,20 @@ mod tests {
         tele.client_registrieren(uid);
 
         // 10 gesendet, 2 verloren
-        for _ in 0..10 { tele.paket_gesendet(&uid, 100); }
-        for _ in 0..2  { tele.paket_verloren(&uid); }
+        for _ in 0..10 {
+            tele.paket_gesendet(&uid, 100);
+        }
+        for _ in 0..2 {
+            tele.paket_verloren(&uid);
+        }
 
         let snapshots = tele.snapshots_erstellen();
         let snap = &snapshots[0];
 
-        assert!((snap.verlust_rate - 0.2).abs() < 0.01, "Verlust-Rate sollte 20% sein");
+        assert!(
+            (snap.verlust_rate - 0.2).abs() < 0.01,
+            "Verlust-Rate sollte 20% sein"
+        );
         assert_eq!(snap.pakete_gesendet, 10);
         assert_eq!(snap.pakete_verloren, 2);
     }
@@ -391,7 +403,10 @@ mod tests {
 
         // Zweiter Snapshot (kein neue Daten)
         let snap2 = tele.snapshots_erstellen();
-        assert_eq!(snap2[0].pakete_gesendet, 0, "Akkumulatoren muessen nach Snapshot resettet sein");
+        assert_eq!(
+            snap2[0].pakete_gesendet, 0,
+            "Akkumulatoren muessen nach Snapshot resettet sein"
+        );
     }
 
     #[tokio::test]
@@ -406,7 +421,9 @@ mod tests {
         tele.snapshots_erstellen();
 
         // Empfanger sollte Snapshot erhalten
-        let snap = rx.try_recv().expect("Snapshot sollte via Broadcast ankommen");
+        let snap = rx
+            .try_recv()
+            .expect("Snapshot sollte via Broadcast ankommen");
         assert_eq!(snap.user_id, uid);
     }
 }

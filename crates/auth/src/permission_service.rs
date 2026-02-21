@@ -4,10 +4,7 @@
 //! Nutzt die Permission-Engine aus crates/db und cached Ergebnisse
 //! fuer haeufige Abfragen. Cache wird bei Aenderungen invalidiert.
 
-use std::{
-    collections::HashMap,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -83,10 +80,7 @@ impl<P: PermissionRepository> PermissionService<P> {
         channel_id: Uuid,
     ) -> AuthResult<HashMap<String, BerechtigungsWert>> {
         let perms = self.alle_berechtigungen_laden(user_id, channel_id).await?;
-        Ok(perms
-            .into_iter()
-            .map(|(k, eb)| (k, eb.wert))
-            .collect())
+        Ok(perms.into_iter().map(|(k, eb)| (k, eb.wert)).collect())
     }
 
     /// Erfordert eine Berechtigung – gibt Fehler wenn nicht erlaubt
@@ -201,7 +195,9 @@ mod tests {
         }
 
         fn leer() -> Self {
-            Self { perms: HashMap::new() }
+            Self {
+                perms: HashMap::new(),
+            }
         }
     }
 

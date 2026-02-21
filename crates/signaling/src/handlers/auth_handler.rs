@@ -4,14 +4,14 @@
 //! an den AuthService. Bei Erfolg wird die Session im Verbindungszustand
 //! gespeichert.
 
+use crate::error::SignalingResult;
+use crate::server_state::SignalingState;
 use speakeasy_core::types::UserId;
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, LoginRequest, LoginResponse, LogoutResponse,
 };
 use std::sync::Arc;
-use crate::error::SignalingResult;
-use crate::server_state::SignalingState;
 
 /// Verarbeitet eine Login-Anfrage
 ///
@@ -100,11 +100,7 @@ where
                 );
             }
             Err(speakeasy_auth::AuthError::BenutzerGesperrt) => {
-                return ControlMessage::error(
-                    request_id,
-                    ErrorCode::Banned,
-                    "Benutzer gesperrt",
-                );
+                return ControlMessage::error(request_id, ErrorCode::Banned, "Benutzer gesperrt");
             }
             Err(speakeasy_auth::AuthError::BenutzerGebannt(grund)) => {
                 return ControlMessage::error(
@@ -125,11 +121,7 @@ where
     };
 
     // Ban-Pruefung nach User-ID
-    match state
-        .ban_service
-        .ban_pruefen(Some(benutzer.id), None)
-        .await
-    {
+    match state.ban_service.ban_pruefen(Some(benutzer.id), None).await {
         Err(speakeasy_auth::AuthError::BenutzerGebannt(grund)) => {
             // Session sofort wieder invalidieren
             let _ = state.auth_service.abmelden(&session.token).await;

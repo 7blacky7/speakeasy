@@ -68,9 +68,8 @@ impl<B: BanRepository + 'static> BanService<B> {
         grund: &str,
         dauer: Option<Duration>,
     ) -> AuthResult<BanRecord> {
-        let laeuft_ab_am = dauer.map(|d| {
-            Utc::now() + chrono::Duration::seconds(d.as_secs() as i64)
-        });
+        let laeuft_ab_am =
+            dauer.map(|d| Utc::now() + chrono::Duration::seconds(d.as_secs() as i64));
 
         let ban = self
             .ban_repo
@@ -104,9 +103,8 @@ impl<B: BanRepository + 'static> BanService<B> {
         grund: &str,
         dauer: Option<Duration>,
     ) -> AuthResult<BanRecord> {
-        let laeuft_ab_am = dauer.map(|d| {
-            Utc::now() + chrono::Duration::seconds(d.as_secs() as i64)
-        });
+        let laeuft_ab_am =
+            dauer.map(|d| Utc::now() + chrono::Duration::seconds(d.as_secs() as i64));
 
         let ban = self
             .ban_repo
@@ -144,22 +142,14 @@ impl<B: BanRepository + 'static> BanService<B> {
     /// Prueft ob ein Benutzer oder eine IP aktuell gebannt ist
     ///
     /// Gibt `true` zurueck wenn ein aktiver Ban existiert.
-    pub async fn ist_gebannt(
-        &self,
-        user_id: Option<Uuid>,
-        ip: Option<&str>,
-    ) -> AuthResult<bool> {
+    pub async fn ist_gebannt(&self, user_id: Option<Uuid>, ip: Option<&str>) -> AuthResult<bool> {
         Ok(self.ban_repo.is_banned(user_id, ip).await?.is_some())
     }
 
     /// Prueft und gibt einen AuthError zurueck wenn gebannt
     ///
     /// Nuetzlich beim Login um Bans direkt als Fehler zu behandeln.
-    pub async fn ban_pruefen(
-        &self,
-        user_id: Option<Uuid>,
-        ip: Option<&str>,
-    ) -> AuthResult<()> {
+    pub async fn ban_pruefen(&self, user_id: Option<Uuid>, ip: Option<&str>) -> AuthResult<()> {
         match self.ban_repo.is_banned(user_id, ip).await? {
             None => Ok(()),
             Some(ban) => {
@@ -196,8 +186,8 @@ impl<B: BanRepository + 'static> BanService<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
     use speakeasy_db::repository::DbResult;
+    use std::sync::Mutex;
 
     #[derive(Default)]
     struct TestBanRepo {
@@ -220,19 +210,29 @@ mod tests {
         }
 
         async fn get(&self, id: Uuid) -> DbResult<Option<BanRecord>> {
-            Ok(self.bans.lock().unwrap().iter().find(|b| b.id == id).cloned())
+            Ok(self
+                .bans
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|b| b.id == id)
+                .cloned())
         }
 
         async fn list(&self, nur_aktive: bool) -> DbResult<Vec<BanRecord>> {
             let bans = self.bans.lock().unwrap();
             let jetzt = Utc::now();
-            Ok(bans.iter().filter(|b| {
-                if nur_aktive {
-                    b.expires_at.is_none_or(|e| e > jetzt)
-                } else {
-                    true
-                }
-            }).cloned().collect())
+            Ok(bans
+                .iter()
+                .filter(|b| {
+                    if nur_aktive {
+                        b.expires_at.is_none_or(|e| e > jetzt)
+                    } else {
+                        true
+                    }
+                })
+                .cloned()
+                .collect())
         }
 
         async fn remove(&self, id: Uuid) -> DbResult<bool> {
@@ -249,15 +249,18 @@ mod tests {
         ) -> DbResult<Option<BanRecord>> {
             let bans = self.bans.lock().unwrap();
             let jetzt = Utc::now();
-            Ok(bans.iter().find(|b| {
-                let noch_aktiv = b.expires_at.is_none_or(|e| e > jetzt);
-                if !noch_aktiv {
-                    return false;
-                }
-                let user_match = user_id.is_some_and(|uid| b.user_id == Some(uid));
-                let ip_match = ip.is_some_and(|i| b.ip.as_deref() == Some(i));
-                user_match || ip_match
-            }).cloned())
+            Ok(bans
+                .iter()
+                .find(|b| {
+                    let noch_aktiv = b.expires_at.is_none_or(|e| e > jetzt);
+                    if !noch_aktiv {
+                        return false;
+                    }
+                    let user_match = user_id.is_some_and(|uid| b.user_id == Some(uid));
+                    let ip_match = ip.is_some_and(|i| b.ip.as_deref() == Some(i));
+                    user_match || ip_match
+                })
+                .cloned())
         }
 
         async fn cleanup_expired(&self) -> DbResult<u64> {
@@ -295,7 +298,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(service.ist_gebannt(None, Some("192.168.1.100")).await.unwrap());
+        assert!(service
+            .ist_gebannt(None, Some("192.168.1.100"))
+            .await
+            .unwrap());
         assert!(!service.ist_gebannt(None, Some("10.0.0.1")).await.unwrap());
     }
 

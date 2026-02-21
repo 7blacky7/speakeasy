@@ -7,14 +7,22 @@ use speakeasy_db::{
 };
 
 async fn db() -> SqliteDb {
-    SqliteDb::in_memory().await.expect("In-Memory DB konnte nicht erstellt werden")
+    SqliteDb::in_memory()
+        .await
+        .expect("In-Memory DB konnte nicht erstellt werden")
 }
 
 async fn erstelle_user(db: &SqliteDb, name: &str) -> uuid::Uuid {
-    UserRepository::create(db, NeuerBenutzer { username: name, password_hash: "hash" })
-        .await
-        .unwrap()
-        .id
+    UserRepository::create(
+        db,
+        NeuerBenutzer {
+            username: name,
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap()
+    .id
 }
 
 #[tokio::test]
@@ -22,14 +30,17 @@ async fn einladung_erstellen_und_laden() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader").await;
 
-    let einladung = InviteRepository::create(&db, NeueEinladung {
-        code: "ABC123",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 10,
-        expires_at: None,
-        created_by: user_id,
-    })
+    let einladung = InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "ABC123",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 10,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
@@ -37,10 +48,16 @@ async fn einladung_erstellen_und_laden() {
     assert_eq!(einladung.max_uses, 10);
     assert_eq!(einladung.used_count, 0);
 
-    let geladen = InviteRepository::get(&db, einladung.id).await.unwrap().unwrap();
+    let geladen = InviteRepository::get(&db, einladung.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(geladen.id, einladung.id);
 
-    let per_code = InviteRepository::get_by_code(&db, "ABC123").await.unwrap().unwrap();
+    let per_code = InviteRepository::get_by_code(&db, "ABC123")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(per_code.id, einladung.id);
 }
 
@@ -49,25 +66,31 @@ async fn einladung_code_unique() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader2").await;
 
-    InviteRepository::create(&db, NeueEinladung {
-        code: "UNIQUE1",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 0,
-        expires_at: None,
-        created_by: user_id,
-    })
+    InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "UNIQUE1",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 0,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
-    let err = InviteRepository::create(&db, NeueEinladung {
-        code: "UNIQUE1",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 0,
-        expires_at: None,
-        created_by: user_id,
-    })
+    let err = InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "UNIQUE1",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 0,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await;
 
     assert!(err.is_err());
@@ -79,14 +102,17 @@ async fn einladung_verwenden_zaehler() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader3").await;
 
-    InviteRepository::create(&db, NeueEinladung {
-        code: "USE123",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 5,
-        expires_at: None,
-        created_by: user_id,
-    })
+    InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "USE123",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 5,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
@@ -102,14 +128,17 @@ async fn einladung_erschoepft() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader4").await;
 
-    InviteRepository::create(&db, NeueEinladung {
-        code: "LIMIT1",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 2,
-        expires_at: None,
-        created_by: user_id,
-    })
+    InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "LIMIT1",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 2,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
@@ -126,14 +155,17 @@ async fn einladung_abgelaufen() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader5").await;
 
-    InviteRepository::create(&db, NeueEinladung {
-        code: "EXPIRE1",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 100,
-        expires_at: Some(Utc::now() - Duration::hours(1)),
-        created_by: user_id,
-    })
+    InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "EXPIRE1",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 100,
+            expires_at: Some(Utc::now() - Duration::hours(1)),
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
@@ -147,19 +179,24 @@ async fn einladung_unbegrenzt() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader6").await;
 
-    InviteRepository::create(&db, NeueEinladung {
-        code: "UNLIMITED",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 0,
-        expires_at: None,
-        created_by: user_id,
-    })
+    InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "UNLIMITED",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 0,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
     for _ in 0..20 {
-        let result = InviteRepository::use_invite(&db, "UNLIMITED").await.unwrap();
+        let result = InviteRepository::use_invite(&db, "UNLIMITED")
+            .await
+            .unwrap();
         assert!(result.is_some());
     }
 }
@@ -169,14 +206,17 @@ async fn einladung_widerrufen() {
     let db = db().await;
     let user_id = erstelle_user(&db, "einlader7").await;
 
-    let einladung = InviteRepository::create(&db, NeueEinladung {
-        code: "REVOKE1",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 0,
-        expires_at: None,
-        created_by: user_id,
-    })
+    let einladung = InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "REVOKE1",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 0,
+            expires_at: None,
+            created_by: user_id,
+        },
+    )
     .await
     .unwrap();
 
@@ -194,26 +234,32 @@ async fn einladungen_auflisten() {
     let anderer_id = erstelle_user(&db, "anderer_einlader").await;
 
     for i in 0..3 {
-        InviteRepository::create(&db, NeueEinladung {
-            code: &format!("MY{i}"),
-            channel_id: None,
-            assigned_group_id: None,
-            max_uses: 0,
-            expires_at: None,
-            created_by: user_id,
-        })
+        InviteRepository::create(
+            &db,
+            NeueEinladung {
+                code: &format!("MY{i}"),
+                channel_id: None,
+                assigned_group_id: None,
+                max_uses: 0,
+                expires_at: None,
+                created_by: user_id,
+            },
+        )
         .await
         .unwrap();
     }
 
-    InviteRepository::create(&db, NeueEinladung {
-        code: "OTHER",
-        channel_id: None,
-        assigned_group_id: None,
-        max_uses: 0,
-        expires_at: None,
-        created_by: anderer_id,
-    })
+    InviteRepository::create(
+        &db,
+        NeueEinladung {
+            code: "OTHER",
+            channel_id: None,
+            assigned_group_id: None,
+            max_uses: 0,
+            expires_at: None,
+            created_by: anderer_id,
+        },
+    )
     .await
     .unwrap();
 

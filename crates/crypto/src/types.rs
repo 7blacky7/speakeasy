@@ -108,14 +108,12 @@ impl SecretBytes {
 }
 
 /// Algorithmus fuer Gruppen-Schluessel
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum GroupKeyAlgorithm {
     #[default]
     Aes256Gcm,
     ChaCha20Poly1305,
 }
-
 
 /// Verschluesselter Payload (Nonce + Ciphertext + Auth-Tag)
 #[derive(Debug, Clone)]
@@ -156,6 +154,10 @@ impl EncryptedPayload {
         let aad = bytes[14..14 + aad_len].to_vec();
         let ciphertext = bytes[14 + aad_len..].to_vec();
 
-        Some(Self { nonce, ciphertext, aad })
+        Some(Self {
+            nonce,
+            ciphertext,
+            aad,
+        })
     }
 }

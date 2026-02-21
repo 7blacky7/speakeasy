@@ -44,11 +44,7 @@ impl<U: UserRepository> AuthService<U> {
     /// Registriert einen neuen Benutzer
     ///
     /// Prueft ob der Benutzername bereits vergeben ist und erstellt den Account.
-    pub async fn registrieren(
-        &self,
-        username: &str,
-        passwort: &str,
-    ) -> AuthResult<BenutzerRecord> {
+    pub async fn registrieren(&self, username: &str, passwort: &str) -> AuthResult<BenutzerRecord> {
         // Pruefen ob Username bereits vergeben
         if self.user_repo.get_by_name(username).await?.is_some() {
             return Err(AuthError::BenutzernameVergeben(username.to_string()));
@@ -253,8 +249,8 @@ impl<U: UserRepository> AuthService<U> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
     use speakeasy_db::DbError;
+    use std::sync::Mutex;
 
     // Minimaler In-Memory UserRepository fuer Tests
     #[derive(Default)]
@@ -277,16 +273,37 @@ mod tests {
         }
 
         async fn get_by_id(&self, id: Uuid) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter().find(|u| u.id == id).cloned())
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.id == id)
+                .cloned())
         }
 
-        async fn get_by_name(&self, username: &str) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter().find(|u| u.username == username).cloned())
+        async fn get_by_name(
+            &self,
+            username: &str,
+        ) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.username == username)
+                .cloned())
         }
 
-        async fn update(&self, id: Uuid, data: BenutzerUpdate) -> speakeasy_db::DbResult<BenutzerRecord> {
+        async fn update(
+            &self,
+            id: Uuid,
+            data: BenutzerUpdate,
+        ) -> speakeasy_db::DbResult<BenutzerRecord> {
             let mut benutzer = self.benutzer.lock().unwrap();
-            let user = benutzer.iter_mut().find(|u| u.id == id)
+            let user = benutzer
+                .iter_mut()
+                .find(|u| u.id == id)
                 .ok_or_else(|| DbError::nicht_gefunden(id.to_string()))?;
             if let Some(hash) = data.password_hash {
                 user.password_hash = hash;
@@ -306,11 +323,23 @@ mod tests {
 
         async fn list(&self, nur_aktive: bool) -> speakeasy_db::DbResult<Vec<BenutzerRecord>> {
             let benutzer = self.benutzer.lock().unwrap();
-            Ok(benutzer.iter().filter(|u| !nur_aktive || u.is_active).cloned().collect())
+            Ok(benutzer
+                .iter()
+                .filter(|u| !nur_aktive || u.is_active)
+                .cloned()
+                .collect())
         }
 
-        async fn authenticate(&self, username: &str, password_hash: &str) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter()
+        async fn authenticate(
+            &self,
+            username: &str,
+            password_hash: &str,
+        ) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
                 .find(|u| u.username == username && u.password_hash == password_hash)
                 .cloned())
         }
@@ -371,7 +400,10 @@ mod tests {
     #[tokio::test]
     async fn session_validierung() {
         let service = test_service();
-        service.registrieren("sessionuser", "passwort").await.unwrap();
+        service
+            .registrieren("sessionuser", "passwort")
+            .await
+            .unwrap();
         let (_, session) = service.anmelden("sessionuser", "passwort").await.unwrap();
 
         let validierter = service.session_validieren(&session.token).await.unwrap();
@@ -381,7 +413,10 @@ mod tests {
     #[tokio::test]
     async fn abmelden_invalidiert_session() {
         let service = test_service();
-        service.registrieren("logoutuser", "passwort").await.unwrap();
+        service
+            .registrieren("logoutuser", "passwort")
+            .await
+            .unwrap();
         let (_, session) = service.anmelden("logoutuser", "passwort").await.unwrap();
 
         service.abmelden(&session.token).await.unwrap();

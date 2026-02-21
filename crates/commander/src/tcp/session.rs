@@ -73,9 +73,9 @@ mod tests {
 
     #[test]
     fn session_zustand_wechsel() {
+        use crate::auth::AuthArt;
         use chrono::Utc;
         use speakeasy_db::models::BenutzerRecord;
-        use crate::auth::AuthArt;
 
         let mut session = TcpSession::neu(test_addr());
         assert_eq!(session.zustand, SessionZustand::Unauthentifiziert);

@@ -193,14 +193,20 @@ mod tests {
     #[ignore = "Benoetigt Audio-Hardware"]
     fn eingabegeraete_auflistbar() {
         let devices = list_input_devices().expect("Liste sollte abrufbar sein");
-        println!("Eingabegeraete: {:?}", devices.iter().map(|d| &d.name).collect::<Vec<_>>());
+        println!(
+            "Eingabegeraete: {:?}",
+            devices.iter().map(|d| &d.name).collect::<Vec<_>>()
+        );
     }
 
     #[test]
     #[ignore = "Benoetigt Audio-Hardware"]
     fn ausgabegeraete_auflistbar() {
         let devices = list_output_devices().expect("Liste sollte abrufbar sein");
-        println!("Ausgabegeraete: {:?}", devices.iter().map(|d| &d.name).collect::<Vec<_>>());
+        println!(
+            "Ausgabegeraete: {:?}",
+            devices.iter().map(|d| &d.name).collect::<Vec<_>>()
+        );
     }
 
     #[test]

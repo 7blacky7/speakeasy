@@ -4,12 +4,12 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
+use axum::body::Body;
 use axum::extract::State;
+use axum::http::Request;
 use axum::http::{HeaderValue, Method, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Json, Response};
-use axum::body::Body;
-use axum::http::Request;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
@@ -108,14 +108,13 @@ impl RestServer {
                 .allow_headers(tower_http::cors::Any)
         };
 
-        let rls = RateLimitState { limiter: rate_limiter };
+        let rls = RateLimitState {
+            limiter: rate_limiter,
+        };
 
         let app = v1_router()
             // Rate Limiter als innersten Layer (laeuft vor den Handlern)
-            .layer(middleware::from_fn_with_state(
-                rls,
-                rate_limit_middleware,
-            ))
+            .layer(middleware::from_fn_with_state(rls, rate_limit_middleware))
             .layer(TraceLayer::new_for_http())
             .layer(cors)
             .with_state(state);

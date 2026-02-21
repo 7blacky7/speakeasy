@@ -355,15 +355,19 @@ mod tests {
 
     #[test]
     fn header_groesse_ist_16_bytes() {
-        let header =
-            VoicePacketHeader::new(PacketType::Audio, 0, 0, 0, 0);
+        let header = VoicePacketHeader::new(PacketType::Audio, 0, 0, 0, 0);
         assert_eq!(header.encode().len(), 16);
     }
 
     #[test]
     fn header_big_endian_byte_reihenfolge() {
-        let header =
-            VoicePacketHeader::new(PacketType::Audio, 0x0102, 0x01020304, 0x05060708, 0x090A0B0C);
+        let header = VoicePacketHeader::new(
+            PacketType::Audio,
+            0x0102,
+            0x01020304,
+            0x05060708,
+            0x090A0B0C,
+        );
         let bytes = header.encode();
         // Flags bei Offset 2-3
         assert_eq!(bytes[2], 0x01);

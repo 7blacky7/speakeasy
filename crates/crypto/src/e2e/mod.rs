@@ -18,6 +18,8 @@ pub mod key_manager;
 
 pub use decrypt::{decrypt_audio, decrypt_audio_bytes};
 pub use encrypt::encrypt_audio;
-pub use group_key::{create_group_key, rotate_group_key, unwrap_key_for_recipient, wrap_key_for_recipient};
+pub use group_key::{
+    create_group_key, rotate_group_key, unwrap_key_for_recipient, wrap_key_for_recipient,
+};
 pub use key_exchange::{hkdf_derive, KeyExchangeClient, KeyExchangeServer, SharedSecret};
 pub use key_manager::GroupKeyManager;

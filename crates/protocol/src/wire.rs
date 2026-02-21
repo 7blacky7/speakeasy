@@ -179,10 +179,7 @@ impl Encoder<ControlMessage> for FrameCodec {
 /// # Fehler
 /// - `UnexpectedEof` wenn die Verbindung vor Abschluss des Frames getrennt wird
 /// - `InvalidData` bei ungueltigem JSON oder zu grossem Frame
-pub async fn read_frame<R>(
-    reader: &mut R,
-    max_frame_size: usize,
-) -> io::Result<ControlMessage>
+pub async fn read_frame<R>(reader: &mut R, max_frame_size: usize) -> io::Result<ControlMessage>
 where
     R: AsyncRead + Unpin,
 {
@@ -285,7 +282,10 @@ mod tests {
         assert_eq!(buf.len(), LENGTH_FIELD_SIZE + payload_len);
 
         // Dekodieren
-        let decoded = codec.decode(&mut buf).unwrap().expect("Muss eine Nachricht enthalten");
+        let decoded = codec
+            .decode(&mut buf)
+            .unwrap()
+            .expect("Muss eine Nachricht enthalten");
         assert_eq!(decoded.request_id, 42);
         assert!(matches!(decoded.payload, ControlPayload::Ping(_)));
     }

@@ -106,7 +106,10 @@ impl AudioProcessor for Agc {
             let amplified = *sample * self.current_gain;
 
             // Hard Limiter
-            *sample = amplified.clamp(-self.config.limiter_threshold, self.config.limiter_threshold);
+            *sample = amplified.clamp(
+                -self.config.limiter_threshold,
+                self.config.limiter_threshold,
+            );
         }
     }
 
@@ -133,7 +136,7 @@ mod tests {
             target_level: 0.5,
             max_gain: 50.0,
             min_gain: 0.1,
-            attack_coeff: 0.0,   // sofortige Reaktion
+            attack_coeff: 0.0, // sofortige Reaktion
             release_coeff: 0.0,
             limiter_threshold: 0.99,
         });
@@ -141,7 +144,11 @@ mod tests {
         agc.process(&mut samples);
         // Signal sollte verstaerkt worden sein
         let avg: f32 = samples.iter().map(|s| s.abs()).sum::<f32>() / samples.len() as f32;
-        assert!(avg > 0.01, "AGC sollte leises Signal verstaerken, avg={}", avg);
+        assert!(
+            avg > 0.01,
+            "AGC sollte leises Signal verstaerken, avg={}",
+            avg
+        );
     }
 
     #[test]

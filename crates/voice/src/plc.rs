@@ -289,7 +289,13 @@ mod tests {
 
     fn make_fec_paket(seq: u32, ssrc: u32) -> VoicePacket {
         VoicePacket {
-            header: VoicePacketHeader::new(PacketType::Audio, VoiceFlags::FEC, seq, seq * 960, ssrc),
+            header: VoicePacketHeader::new(
+                PacketType::Audio,
+                VoiceFlags::FEC,
+                seq,
+                seq * 960,
+                ssrc,
+            ),
             payload: vec![0xCD; 40],
         }
     }
@@ -323,7 +329,10 @@ mod tests {
         // Ergebnisse: [PLC fuer Seq1, Original Seq2]
         assert_eq!(ergebnisse.len(), 2, "Erwartet PLC + Original");
         assert!(ergebnisse[0].plc_aktiv(), "Erstes Ergebnis muss PLC sein");
-        assert!(ergebnisse[1].ist_original(), "Zweites Ergebnis muss Original sein");
+        assert!(
+            ergebnisse[1].ist_original(),
+            "Zweites Ergebnis muss Original sein"
+        );
 
         assert_eq!(plc.statistik().wiederholungen, 1);
         assert_eq!(plc.statistik().gesamt_verloren, 1);
@@ -359,8 +368,14 @@ mod tests {
         let ergebnisse = plc.verarbeiten(make_paket(grosse_luecke + 1, 0xCAFE));
 
         // Nach MAX_WIEDERHOLUNGEN Wiederholungen -> Stille
-        let stille_count = ergebnisse.iter().filter(|e| matches!(e, PlcErgebnis::Stille(_))).count();
-        assert!(stille_count > 0, "Stille muss nach vielen Verlusten eingefuegt werden");
+        let stille_count = ergebnisse
+            .iter()
+            .filter(|e| matches!(e, PlcErgebnis::Stille(_)))
+            .count();
+        assert!(
+            stille_count > 0,
+            "Stille muss nach vielen Verlusten eingefuegt werden"
+        );
 
         assert!(plc.statistik().stille_eingefuegt > 0);
     }
@@ -417,7 +432,11 @@ mod tests {
 
         let rate = plc.statistik().verlust_rate();
         // 1 verloren von 6 gesamt
-        assert!((rate - (1.0 / 7.0)).abs() < 0.01, "Verlust-Rate falsch: {}", rate);
+        assert!(
+            (rate - (1.0 / 7.0)).abs() < 0.01,
+            "Verlust-Rate falsch: {}",
+            rate
+        );
     }
 
     #[test]

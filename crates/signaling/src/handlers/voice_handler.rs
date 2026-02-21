@@ -4,14 +4,13 @@
 //! Koordiniert den Handshake zwischen TCP-Kontrollebene und UDP-Voice-Layer.
 
 use speakeasy_core::types::UserId;
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::control::{
-    ControlMessage, ControlPayload, VoiceDisconnectRequest, VoiceInitRequest,
-    VoiceReadyResponse,
+    ControlMessage, ControlPayload, VoiceDisconnectRequest, VoiceInitRequest, VoiceReadyResponse,
 };
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 use crate::server_state::SignalingState;
 

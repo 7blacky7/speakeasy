@@ -103,7 +103,7 @@ pub fn build_default_capture_pipeline() -> AudioPipeline {
     use crate::dsp::{
         agc::{Agc, AgcConfig},
         deesser::{DeEsser, DeEsserConfig},
-        echo_cancel::{EchoCanceller, EchoCancelConfig},
+        echo_cancel::{EchoCancelConfig, EchoCanceller},
         noise_gate::{NoiseGate, NoiseGateConfig},
         noise_suppression::{NoiseSuppressor, SuppressionLevel},
     };
@@ -134,8 +134,8 @@ pub fn build_minimal_capture_pipeline() -> AudioPipeline {
 mod tests {
     use super::*;
     use crate::dsp::{
-        noise_gate::{NoiseGate, NoiseGateConfig},
         agc::{Agc, AgcConfig},
+        noise_gate::{NoiseGate, NoiseGateConfig},
     };
 
     #[test]
@@ -209,6 +209,10 @@ mod tests {
         let mut pipeline = build_default_capture_pipeline();
         let input = vec![0.1f32; 960];
         let result = pipeline.process_frame(&input);
-        assert_eq!(result.samples.len(), 960, "Frame-Laenge muss erhalten bleiben");
+        assert_eq!(
+            result.samples.len(),
+            960,
+            "Frame-Laenge muss erhalten bleiben"
+        );
     }
 }

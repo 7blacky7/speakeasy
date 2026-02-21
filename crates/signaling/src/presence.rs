@@ -153,10 +153,10 @@ impl PresenceManager {
                 });
             }
         } else {
-            let _ = self
-                .inner
-                .event_tx
-                .send(PresenceEvent::ChannelBeigetreten { user_id, channel_id });
+            let _ = self.inner.event_tx.send(PresenceEvent::ChannelBeigetreten {
+                user_id,
+                channel_id,
+            });
         }
 
         // Zum neuen Channel hinzufuegen
@@ -183,13 +183,10 @@ impl PresenceManager {
 
         if let Some(channel_id) = channel_id {
             self.aus_channel_entfernen_intern(user_id, &channel_id);
-            let _ = self
-                .inner
-                .event_tx
-                .send(PresenceEvent::ChannelVerlassen {
-                    user_id: *user_id,
-                    channel_id,
-                });
+            let _ = self.inner.event_tx.send(PresenceEvent::ChannelVerlassen {
+                user_id: *user_id,
+                channel_id,
+            });
             tracing::debug!(user_id = %user_id, channel_id = %channel_id, "Client Channel verlassen");
         }
     }
@@ -206,14 +203,11 @@ impl PresenceManager {
             entry.is_output_muted = is_output_muted;
         }
 
-        let _ = self
-            .inner
-            .event_tx
-            .send(PresenceEvent::StatusGeaendert {
-                user_id,
-                is_input_muted,
-                is_output_muted,
-            });
+        let _ = self.inner.event_tx.send(PresenceEvent::StatusGeaendert {
+            user_id,
+            is_input_muted,
+            is_output_muted,
+        });
     }
 
     /// Gibt alle Clients in einem bestimmten Channel zurueck
@@ -231,7 +225,11 @@ impl PresenceManager {
 
     /// Gibt alle online Clients zurueck
     pub fn alle_clients(&self) -> Vec<ClientPresence> {
-        self.inner.clients.iter().map(|e| e.value().clone()).collect()
+        self.inner
+            .clients
+            .iter()
+            .map(|e| e.value().clone())
+            .collect()
     }
 
     /// Gibt die Presence-Info eines Clients zurueck

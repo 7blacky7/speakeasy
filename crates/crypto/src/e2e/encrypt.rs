@@ -60,7 +60,11 @@ pub fn encrypt_audio(
         }
     };
 
-    Ok(EncryptedPayload { nonce, ciphertext, aad })
+    Ok(EncryptedPayload {
+        nonce,
+        ciphertext,
+        aad,
+    })
 }
 
 fn encrypt_aes256gcm(
@@ -81,7 +85,13 @@ fn encrypt_aes256gcm(
     let nonce = AesNonce::from_slice(nonce_bytes);
 
     cipher
-        .encrypt(nonce, Payload { msg: plaintext, aad })
+        .encrypt(
+            nonce,
+            Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .map_err(|e| CryptoError::Verschluesselung(e.to_string()))
 }
 
@@ -103,7 +113,13 @@ fn encrypt_chacha20(
     let nonce = ChaChaNonce::from_slice(nonce_bytes);
 
     cipher
-        .encrypt(nonce, chacha20poly1305::aead::Payload { msg: plaintext, aad })
+        .encrypt(
+            nonce,
+            chacha20poly1305::aead::Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .map_err(|e| CryptoError::Verschluesselung(e.to_string()))
 }
 
@@ -118,8 +134,7 @@ mod tests {
 
     #[test]
     fn encrypt_audio_aes256gcm() {
-        let key =
-            create_group_key("test-ch", 1, 0, GroupKeyAlgorithm::Aes256Gcm).unwrap();
+        let key = create_group_key("test-ch", 1, 0, GroupKeyAlgorithm::Aes256Gcm).unwrap();
         let plaintext = b"Hallo Opus-Audio-Daten 1234567890";
 
         let payload = encrypt_audio(plaintext, &key, 42, 1).unwrap();
@@ -139,8 +154,7 @@ mod tests {
 
     #[test]
     fn encrypt_audio_chacha20() {
-        let key =
-            create_group_key("test-ch", 1, 0, GroupKeyAlgorithm::ChaCha20Poly1305).unwrap();
+        let key = create_group_key("test-ch", 1, 0, GroupKeyAlgorithm::ChaCha20Poly1305).unwrap();
         let plaintext = b"Opus-Frame-Daten";
 
         let payload = encrypt_audio(plaintext, &key, 99, 7).unwrap();
@@ -150,8 +164,7 @@ mod tests {
 
     #[test]
     fn nonce_epoch_und_seq_korrekt() {
-        let key =
-            create_group_key("ch", 1, 5, GroupKeyAlgorithm::Aes256Gcm).unwrap();
+        let key = create_group_key("ch", 1, 5, GroupKeyAlgorithm::Aes256Gcm).unwrap();
         let payload = encrypt_audio(b"test", &key, 0, 100).unwrap();
         assert_eq!(payload.nonce.epoch(), 5);
         assert_eq!(payload.nonce.seq(), 100);
@@ -159,8 +172,7 @@ mod tests {
 
     #[test]
     fn payload_serialisierung() {
-        let key =
-            create_group_key("ch", 1, 0, GroupKeyAlgorithm::Aes256Gcm).unwrap();
+        let key = create_group_key("ch", 1, 0, GroupKeyAlgorithm::Aes256Gcm).unwrap();
         let payload = encrypt_audio(b"audio", &key, 1, 2).unwrap();
 
         let bytes = payload.to_bytes();

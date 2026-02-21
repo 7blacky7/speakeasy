@@ -7,10 +7,8 @@ use tonic::transport::Server;
 
 use crate::grpc::services::{
     proto::{
-        channel_service_server::ChannelServiceServer,
-        client_service_server::ClientServiceServer,
-        file_service_server::FileServiceServer,
-        permission_service_server::PermissionServiceServer,
+        channel_service_server::ChannelServiceServer, client_service_server::ClientServiceServer,
+        file_service_server::FileServiceServer, permission_service_server::PermissionServiceServer,
         server_service_server::ServerServiceServer,
     },
     ChannelServiceImpl, ClientServiceImpl, FileServiceImpl, PermissionServiceImpl,
@@ -47,10 +45,18 @@ impl GrpcServer {
         tracing::info!(addr = %self.konfig.bind_addr, "gRPC-Commander-Server gestartet");
 
         Server::builder()
-            .add_service(ServerServiceServer::new(ServerServiceImpl::neu(state.clone())))
-            .add_service(ChannelServiceServer::new(ChannelServiceImpl::neu(state.clone())))
-            .add_service(ClientServiceServer::new(ClientServiceImpl::neu(state.clone())))
-            .add_service(PermissionServiceServer::new(PermissionServiceImpl::neu(state.clone())))
+            .add_service(ServerServiceServer::new(ServerServiceImpl::neu(
+                state.clone(),
+            )))
+            .add_service(ChannelServiceServer::new(ChannelServiceImpl::neu(
+                state.clone(),
+            )))
+            .add_service(ClientServiceServer::new(ClientServiceImpl::neu(
+                state.clone(),
+            )))
+            .add_service(PermissionServiceServer::new(PermissionServiceImpl::neu(
+                state.clone(),
+            )))
             .add_service(FileServiceServer::new(FileServiceImpl::neu(state)))
             .serve(self.konfig.bind_addr)
             .await?;

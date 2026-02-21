@@ -78,11 +78,7 @@ impl ClientSenderHandle {
     /// Startet einen neuen Sende-Task fuer einen Client
     ///
     /// Liest aus der mpsc-Queue und sendet via UDP an `ziel_addr`.
-    pub fn starten(
-        socket: Arc<UdpSocket>,
-        ziel_addr: SocketAddr,
-        queue_groesse: usize,
-    ) -> Self {
+    pub fn starten(socket: Arc<UdpSocket>, ziel_addr: SocketAddr, queue_groesse: usize) -> Self {
         let (tx, mut rx) = mpsc::channel::<Arc<Vec<u8>>>(queue_groesse);
 
         let task = tokio::spawn(async move {
@@ -186,10 +182,7 @@ impl VoiceServer {
     /// Startet die Empfangs-Loop (laeuft bis `shutdown_rx` ein Signal sendet)
     ///
     /// Diese Methode blockiert bis zum Shutdown-Signal.
-    pub async fn empfangs_loop_starten(
-        &self,
-        mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
-    ) {
+    pub async fn empfangs_loop_starten(&self, mut shutdown_rx: tokio::sync::oneshot::Receiver<()>) {
         // Stack-allokierter Empfangspuffer – wird wiederverwendet (kein Heap pro Paket)
         let mut buf = [0u8; UDP_BUFFER_SIZE];
 
@@ -304,10 +297,13 @@ mod tests {
         let router = ChannelRouter::neu();
         let state = VoiceState::neu();
 
-        let server = VoiceServer::binden(config, router, state).await
+        let server = VoiceServer::binden(config, router, state)
+            .await
             .expect("Server muss binden koennen");
 
-        let addr = server.lokale_adresse().expect("Adresse muss verfuegbar sein");
+        let addr = server
+            .lokale_adresse()
+            .expect("Adresse muss verfuegbar sein");
         assert_ne!(addr.port(), 0, "OS muss einen Port zuweisen");
     }
 
@@ -318,7 +314,8 @@ mod tests {
         let router = ChannelRouter::neu();
         let state = VoiceState::neu();
 
-        let server = VoiceServer::binden(config, router.clone(), state.clone()).await
+        let server = VoiceServer::binden(config, router.clone(), state.clone())
+            .await
             .expect("Server muss binden koennen");
         let server_addr = server.lokale_adresse().unwrap();
 

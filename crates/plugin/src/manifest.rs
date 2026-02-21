@@ -96,13 +96,19 @@ impl PluginManifest {
     /// Validiert das Manifest auf Pflichtfelder und Konsistenz
     pub fn validieren(&self) -> Result<()> {
         if self.plugin.name.is_empty() {
-            return Err(PluginError::Manifest("Pflichtfeld fehlt: plugin.name".into()));
+            return Err(PluginError::Manifest(
+                "Pflichtfeld fehlt: plugin.name".into(),
+            ));
         }
         if self.plugin.version.is_empty() {
-            return Err(PluginError::Manifest("Pflichtfeld fehlt: plugin.version".into()));
+            return Err(PluginError::Manifest(
+                "Pflichtfeld fehlt: plugin.version".into(),
+            ));
         }
         if self.plugin.wasm_file.is_empty() {
-            return Err(PluginError::Manifest("Pflichtfeld fehlt: plugin.wasm_file".into()));
+            return Err(PluginError::Manifest(
+                "Pflichtfeld fehlt: plugin.wasm_file".into(),
+            ));
         }
         // Version muss semver-kompatibel sein (x.y.z)
         if !ist_semver(&self.plugin.version) {
@@ -227,8 +233,8 @@ wasm_file = "plugin.wasm"
 
     #[test]
     fn manifest_datei_nicht_gefunden() {
-        let err = PluginManifest::from_file(Path::new("/existiert/nicht/manifest.toml"))
-            .unwrap_err();
+        let err =
+            PluginManifest::from_file(Path::new("/existiert/nicht/manifest.toml")).unwrap_err();
         assert!(matches!(err, PluginError::ManifestNichtGefunden(_)));
     }
 }

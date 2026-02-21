@@ -334,7 +334,10 @@ mod tests {
         // user1 sendet ein Paket
         let paket = test_paket(1, 0x1111);
         let weitergeleitet = router.paket_weiterleiten(&paket, &user1);
-        assert_eq!(weitergeleitet, 2, "Paket sollte an user2 und user3 weitergeleitet werden");
+        assert_eq!(
+            weitergeleitet, 2,
+            "Paket sollte an user2 und user3 weitergeleitet werden"
+        );
 
         // user1 sollte nichts empfangen (kein Echo)
         assert!(rx1.try_recv().is_err(), "Absender darf kein Echo empfangen");
@@ -422,7 +425,10 @@ mod tests {
         // user_a2 empfaengt
         assert!(rx_a2.try_recv().is_ok(), "user_a2 sollte empfangen");
         // user_b1 in Kanal B empfaengt NICHT
-        assert!(rx_b1.try_recv().is_err(), "user_b1 in anderem Kanal darf nicht empfangen");
+        assert!(
+            rx_b1.try_recv().is_err(),
+            "user_b1 in anderem Kanal darf nicht empfangen"
+        );
         // user_a1 kein Echo
         assert!(rx_a1.try_recv().is_err(), "user_a1 kein Echo");
     }

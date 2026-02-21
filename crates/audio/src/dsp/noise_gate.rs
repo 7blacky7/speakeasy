@@ -192,7 +192,11 @@ mod tests {
         gate.process(&mut samples);
         // Die letzten Samples sollten voll durchkommen (Gate offen)
         let last = samples[samples.len() - 1];
-        assert!(last > 0.4, "Lautes Signal sollte Gate oeffnen, last={}", last);
+        assert!(
+            last > 0.4,
+            "Lautes Signal sollte Gate oeffnen, last={}",
+            last
+        );
     }
 
     #[test]

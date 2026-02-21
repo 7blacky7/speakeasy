@@ -9,7 +9,7 @@
 //! - Alle anderen nur im `Authenticated`/`InChannel`-Zustand
 
 use speakeasy_core::types::UserId;
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::control::{ControlMessage, ControlPayload, ErrorCode};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -82,13 +82,8 @@ where
                 }
 
                 let peer_ip = ctx.peer_addr.ip().to_string();
-                let antwort = auth_handler::handle_login(
-                    req,
-                    request_id,
-                    &peer_ip,
-                    &self.state,
-                )
-                .await;
+                let antwort =
+                    auth_handler::handle_login(req, request_id, &peer_ip, &self.state).await;
 
                 // Bei Erfolg: Session-Token und User-ID speichern
                 if let ControlPayload::LoginResponse(ref resp) = antwort.payload {
@@ -120,8 +115,7 @@ where
                     self.client_cleanup(&uid).await;
                 }
 
-                let antwort =
-                    auth_handler::handle_logout(&token, request_id, &self.state).await;
+                let antwort = auth_handler::handle_logout(&token, request_id, &self.state).await;
 
                 ctx.session_token = None;
                 ctx.user_id = None;
@@ -183,77 +177,66 @@ where
             // -------------------------------------------------------------------
             // Channel-Nachrichten
             // -------------------------------------------------------------------
-            ControlPayload::ChannelList => Some(
-                channel_handler::handle_channel_list(request_id, &self.state).await,
-            ),
+            ControlPayload::ChannelList => {
+                Some(channel_handler::handle_channel_list(request_id, &self.state).await)
+            }
 
             ControlPayload::ChannelJoin(req) => Some(
-                channel_handler::handle_channel_join(req, request_id, user_id, &self.state)
-                    .await,
+                channel_handler::handle_channel_join(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ChannelLeave(req) => Some(
-                channel_handler::handle_channel_leave(req, request_id, user_id, &self.state)
-                    .await,
+                channel_handler::handle_channel_leave(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ChannelCreate(req) => Some(
-                channel_handler::handle_channel_create(req, request_id, user_id, &self.state)
-                    .await,
+                channel_handler::handle_channel_create(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ChannelEdit(req) => Some(
-                channel_handler::handle_channel_edit(req, request_id, user_id, &self.state)
-                    .await,
+                channel_handler::handle_channel_edit(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ChannelDelete(req) => Some(
-                channel_handler::handle_channel_delete(req, request_id, user_id, &self.state)
-                    .await,
+                channel_handler::handle_channel_delete(req, request_id, user_id, &self.state).await,
             ),
 
             // -------------------------------------------------------------------
             // Client-Nachrichten
             // -------------------------------------------------------------------
-            ControlPayload::ClientList => Some(
-                client_handler::handle_client_list(request_id, &self.state).await,
-            ),
+            ControlPayload::ClientList => {
+                Some(client_handler::handle_client_list(request_id, &self.state).await)
+            }
 
             ControlPayload::ClientKick(req) => Some(
-                client_handler::handle_client_kick(req, request_id, user_id, &self.state)
-                    .await,
+                client_handler::handle_client_kick(req, request_id, user_id, &self.state).await,
             ),
 
-            ControlPayload::ClientBan(req) => Some(
-                client_handler::handle_client_ban(req, request_id, user_id, &self.state)
-                    .await,
-            ),
+            ControlPayload::ClientBan(req) => {
+                Some(client_handler::handle_client_ban(req, request_id, user_id, &self.state).await)
+            }
 
             ControlPayload::ClientMove(req) => Some(
-                client_handler::handle_client_move(req, request_id, user_id, &self.state)
-                    .await,
+                client_handler::handle_client_move(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ClientPoke(req) => Some(
-                client_handler::handle_client_poke(req, request_id, user_id, &self.state)
-                    .await,
+                client_handler::handle_client_poke(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ClientUpdate(req) => Some(
-                client_handler::handle_client_update(req, request_id, user_id, &self.state)
-                    .await,
+                client_handler::handle_client_update(req, request_id, user_id, &self.state).await,
             ),
 
             // -------------------------------------------------------------------
             // Server-Nachrichten
             // -------------------------------------------------------------------
-            ControlPayload::ServerInfo => Some(
-                server_handler::handle_server_info(request_id, &self.state).await,
-            ),
+            ControlPayload::ServerInfo => {
+                Some(server_handler::handle_server_info(request_id, &self.state).await)
+            }
 
             ControlPayload::ServerEdit(req) => Some(
-                server_handler::handle_server_edit(req, request_id, user_id, &self.state)
-                    .await,
+                server_handler::handle_server_edit(req, request_id, user_id, &self.state).await,
             ),
 
             ControlPayload::ServerStop(req) => Some(
@@ -286,13 +269,8 @@ where
             ),
 
             ControlPayload::PermissionRemove(req) => Some(
-                permission_handler::handle_permission_remove(
-                    req,
-                    request_id,
-                    user_id,
-                    &self.state,
-                )
-                .await,
+                permission_handler::handle_permission_remove(req, request_id, user_id, &self.state)
+                    .await,
             ),
 
             // -------------------------------------------------------------------
@@ -310,8 +288,7 @@ where
             ),
 
             ControlPayload::VoiceDisconnect(req) => Some(
-                voice_handler::handle_voice_disconnect(req, request_id, user_id, &self.state)
-                    .await,
+                voice_handler::handle_voice_disconnect(req, request_id, user_id, &self.state).await,
             ),
 
             // -------------------------------------------------------------------

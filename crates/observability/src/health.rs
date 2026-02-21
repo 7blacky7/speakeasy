@@ -3,7 +3,7 @@
 //! Endpoint: `GET /health`
 //! Response: JSON mit Status, Version, Uptime und DB-Verbindungsstatus
 
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
@@ -147,7 +147,8 @@ mod tests {
 
     #[test]
     fn health_response_deserialisierung() {
-        let json = r#"{"status":"healthy","version":"0.1.0","uptime_seconds":100,"db_connected":true}"#;
+        let json =
+            r#"{"status":"healthy","version":"0.1.0","uptime_seconds":100,"db_connected":true}"#;
         let response: HealthResponse = serde_json::from_str(json).unwrap();
         assert_eq!(response.status, HealthStatus::Healthy);
         assert_eq!(response.version, "0.1.0");

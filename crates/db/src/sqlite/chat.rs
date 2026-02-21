@@ -195,9 +195,7 @@ pub(crate) fn row_to_nachricht(row: &sqlx::sqlite::SqliteRow) -> DbResult<ChatNa
     let deleted_at = deleted_at.map(parse_timestamp).transpose()?;
 
     let typ_str: String = row.try_get("message_type")?;
-    let message_type = typ_str
-        .parse::<NachrichtenTyp>()
-        .map_err(DbError::intern)?;
+    let message_type = typ_str.parse::<NachrichtenTyp>().map_err(DbError::intern)?;
 
     Ok(ChatNachrichtRecord {
         id,

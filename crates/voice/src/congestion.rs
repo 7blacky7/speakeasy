@@ -41,12 +41,12 @@ pub struct CongestionConfig {
 impl Default for CongestionConfig {
     fn default() -> Self {
         Self {
-            verlust_schwellwert: 0.05,    // 5% Verlust
-            rtt_warn_delta_ms: 50,         // 50ms RTT-Anstieg
+            verlust_schwellwert: 0.05, // 5% Verlust
+            rtt_warn_delta_ms: 50,     // 50ms RTT-Anstieg
             min_bitrate_kbps: 8,
             max_bitrate_kbps: 510,
-            reduction_factor: 0.75,        // 25% Reduzierung
-            recovery_factor: 1.05,         // 5% Erhoehung pro Intervall
+            reduction_factor: 0.75, // 25% Reduzierung
+            recovery_factor: 1.05,  // 5% Erhoehung pro Intervall
             messintervall: Duration::from_secs(1),
             stabile_intervalle_fuer_recovery: 3,
         }
@@ -358,8 +358,12 @@ mod tests {
         let mut ctrl = CongestionController::mit_config(config, 64);
         ctrl.rtt_aktualisieren(20);
 
-        for _ in 0..100 { ctrl.paket_gesendet(); }
-        for _ in 0..10  { ctrl.paket_verloren(); }
+        for _ in 0..100 {
+            ctrl.paket_gesendet();
+        }
+        for _ in 0..10 {
+            ctrl.paket_verloren();
+        }
 
         let aktion = ctrl.auswerten();
         if let CongestionAktion::BitrateReduzieren { neue_bitrate_kbps } = aktion {
@@ -382,8 +386,12 @@ mod tests {
         let mut ctrl = CongestionController::mit_config(config, 8);
         ctrl.rtt_aktualisieren(20);
 
-        for _ in 0..100 { ctrl.paket_gesendet(); }
-        for _ in 0..10  { ctrl.paket_verloren(); }
+        for _ in 0..100 {
+            ctrl.paket_gesendet();
+        }
+        for _ in 0..10 {
+            ctrl.paket_verloren();
+        }
 
         ctrl.auswerten();
         assert!(
@@ -419,12 +427,14 @@ mod tests {
     #[test]
     fn congestion_rtt_warnung() {
         let mut ctrl = CongestionController::neu(64);
-        ctrl.rtt_aktualisieren(30);   // Erste RTT
-        ctrl.auswerten();             // Ersten Wert einlesen
+        ctrl.rtt_aktualisieren(30); // Erste RTT
+        ctrl.auswerten(); // Ersten Wert einlesen
 
-        ctrl.rtt_aktualisieren(100);  // RTT stark gestiegen (+70ms > 50ms Schwellwert)
+        ctrl.rtt_aktualisieren(100); // RTT stark gestiegen (+70ms > 50ms Schwellwert)
 
-        for _ in 0..10 { ctrl.paket_gesendet(); }
+        for _ in 0..10 {
+            ctrl.paket_gesendet();
+        }
         // Kein Verlust
 
         let aktion = ctrl.auswerten();
@@ -440,8 +450,12 @@ mod tests {
         let mut ctrl = CongestionController::neu(64);
         ctrl.rtt_aktualisieren(250); // Hoher RTT
 
-        for _ in 0..100 { ctrl.paket_gesendet(); }
-        for _ in 0..20  { ctrl.paket_verloren(); } // 20% Verlust
+        for _ in 0..100 {
+            ctrl.paket_gesendet();
+        }
+        for _ in 0..20 {
+            ctrl.paket_verloren();
+        } // 20% Verlust
 
         let aktion = ctrl.auswerten();
         assert!(

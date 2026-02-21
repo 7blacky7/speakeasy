@@ -8,7 +8,7 @@ pub mod server;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use axum::{
-    http::{StatusCode},
+    http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
 use serde_json::json;
@@ -40,7 +40,10 @@ pub struct CommanderState {
 
 impl CommanderState {
     pub fn neu(executor: ExecutorFn, token_validator: TokenValidatorFn) -> Self {
-        Self { executor, token_validator }
+        Self {
+            executor,
+            token_validator,
+        }
     }
 
     /// Fuehrt einen Befehl aus

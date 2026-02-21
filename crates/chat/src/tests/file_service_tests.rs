@@ -2,32 +2,43 @@
 
 use std::sync::Arc;
 
-use speakeasy_db::{SqliteDb, ChannelRepository, UserRepository};
-use speakeasy_db::models::{NeuerBenutzer, NeuerKanal, KanalTyp};
+use speakeasy_db::models::{KanalTyp, NeuerBenutzer, NeuerKanal};
+use speakeasy_db::{ChannelRepository, SqliteDb, UserRepository};
 use uuid::Uuid;
 
 use crate::{
-    error::ChatError,
-    file_service::FileService,
-    storage::DiskStorage,
-    types::DateiUpload,
+    error::ChatError, file_service::FileService, storage::DiskStorage, types::DateiUpload,
 };
 
 async fn test_db() -> Arc<SqliteDb> {
-    Arc::new(SqliteDb::in_memory().await.expect("In-Memory-DB konnte nicht geoeffnet werden"))
+    Arc::new(
+        SqliteDb::in_memory()
+            .await
+            .expect("In-Memory-DB konnte nicht geoeffnet werden"),
+    )
 }
 
 async fn setup(db: &Arc<SqliteDb>) -> (Uuid, Uuid) {
-    let user = UserRepository::create(db.as_ref(), NeuerBenutzer {
-        username: "uploader",
-        password_hash: "hash",
-    }).await.expect("User anlegen fehlgeschlagen");
+    let user = UserRepository::create(
+        db.as_ref(),
+        NeuerBenutzer {
+            username: "uploader",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .expect("User anlegen fehlgeschlagen");
 
-    let kanal = ChannelRepository::create(db.as_ref(), NeuerKanal {
-        name: "dateikanal",
-        channel_type: KanalTyp::Text,
-        ..Default::default()
-    }).await.expect("Kanal anlegen fehlgeschlagen");
+    let kanal = ChannelRepository::create(
+        db.as_ref(),
+        NeuerKanal {
+            name: "dateikanal",
+            channel_type: KanalTyp::Text,
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("Kanal anlegen fehlgeschlagen");
 
     (kanal.id, user.id)
 }
@@ -154,14 +165,17 @@ async fn test_fremde_datei_nicht_loeschbar() {
         .await
         .unwrap();
 
-    let fremder_user = UserRepository::create(db.as_ref(), NeuerBenutzer {
-        username: "fremder",
-        password_hash: "hash2",
-    }).await.unwrap();
+    let fremder_user = UserRepository::create(
+        db.as_ref(),
+        NeuerBenutzer {
+            username: "fremder",
+            password_hash: "hash2",
+        },
+    )
+    .await
+    .unwrap();
 
-    let result = service
-        .datei_loeschen(info.id, fremder_user.id, None)
-        .await;
+    let result = service.datei_loeschen(info.id, fremder_user.id, None).await;
 
     assert!(matches!(result, Err(ChatError::KeineBerechtigung(_))));
 }

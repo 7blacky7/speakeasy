@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use speakeasy_db::{
-    models::{NeueDatei, NachrichtenTyp as DbNachrichtenTyp, NeueNachricht},
+    models::{NachrichtenTyp as DbNachrichtenTyp, NeueDatei, NeueNachricht},
     ChatMessageRepository, FileRepository,
 };
 
@@ -86,10 +86,7 @@ where
 
         // Speicher-Pfad aufbauen: channel_id/file_id_filename
         let file_id = Uuid::new_v4();
-        let storage_path = format!(
-            "{}/{}_{}",
-            upload.channel_id, file_id, upload.filename
-        );
+        let storage_path = format!("{}/{}_{}", upload.channel_id, file_id, upload.filename);
 
         // Datei im Storage ablegen
         self.storage.store(&storage_path, &upload.data).await?;
@@ -161,10 +158,7 @@ where
     /// Datei herunterladen
     ///
     /// Gibt Datei-Metadaten und Rohdaten zurueck.
-    pub async fn datei_herunterladen(
-        &self,
-        file_id: Uuid,
-    ) -> ChatResult<(DateeiInfo, Vec<u8>)> {
+    pub async fn datei_herunterladen(&self, file_id: Uuid) -> ChatResult<(DateeiInfo, Vec<u8>)> {
         let record = self
             .file_repo
             .get_by_id(file_id)
@@ -234,10 +228,7 @@ where
     }
 
     /// Alle aktiven Dateien eines Kanals auflisten
-    pub async fn dateien_auflisten(
-        &self,
-        channel_id: Uuid,
-    ) -> ChatResult<Vec<DateeiInfo>> {
+    pub async fn dateien_auflisten(&self, channel_id: Uuid) -> ChatResult<Vec<DateeiInfo>> {
         let records = self.file_repo.list_by_channel(channel_id).await?;
 
         Ok(records

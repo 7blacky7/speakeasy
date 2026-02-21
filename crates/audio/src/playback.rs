@@ -5,8 +5,8 @@
 
 use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::{Device, SampleFormat, Stream, StreamConfig};
-use ringbuf::{HeapRb, HeapProd, HeapCons};
-use ringbuf::traits::{Split, Consumer};
+use ringbuf::traits::{Consumer, Split};
+use ringbuf::{HeapCons, HeapProd, HeapRb};
 use tracing::{debug, error, warn};
 
 use crate::error::{AudioError, AudioResult};
@@ -107,7 +107,8 @@ pub fn open_playback_stream(
                         warn!("Playback Underrun");
                     }
                     for (out, s) in data.iter_mut().zip(float_buf.iter()) {
-                        *out = (*s * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+                        *out =
+                            (*s * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
                     }
                 },
                 err_fn,
@@ -131,7 +132,13 @@ pub fn open_playback_stream(
         config.sample_rate, config.channels
     );
 
-    Ok((PlaybackStream { _stream: stream, config }, producer))
+    Ok((
+        PlaybackStream {
+            _stream: stream,
+            config,
+        },
+        producer,
+    ))
 }
 
 #[cfg(test)]

@@ -1,12 +1,14 @@
 //! Integration-Tests fuer Server- und KanalGroupRepository (In-Memory SQLite)
 
 use speakeasy_db::{
-    models::{NeueKanalGruppe, NeuerBenutzer, NeuerKanal, NeueServerGruppe},
+    models::{NeueKanalGruppe, NeueServerGruppe, NeuerBenutzer, NeuerKanal},
     ChannelGroupRepository, ChannelRepository, ServerGroupRepository, SqliteDb, UserRepository,
 };
 
 async fn db() -> SqliteDb {
-    SqliteDb::in_memory().await.expect("In-Memory DB konnte nicht erstellt werden")
+    SqliteDb::in_memory()
+        .await
+        .expect("In-Memory DB konnte nicht erstellt werden")
 }
 
 // ---------------------------------------------------------------------------
@@ -17,18 +19,24 @@ async fn db() -> SqliteDb {
 async fn server_gruppe_erstellen_und_laden() {
     let db = db().await;
 
-    let gruppe = ServerGroupRepository::create(&db, NeueServerGruppe {
-        name: "Admin",
-        priority: 100,
-        is_default: false,
-    })
+    let gruppe = ServerGroupRepository::create(
+        &db,
+        NeueServerGruppe {
+            name: "Admin",
+            priority: 100,
+            is_default: false,
+        },
+    )
     .await
     .unwrap();
 
     assert_eq!(gruppe.name, "Admin");
     assert_eq!(gruppe.priority, 100);
 
-    let geladen = ServerGroupRepository::get(&db, gruppe.id).await.unwrap().unwrap();
+    let geladen = ServerGroupRepository::get(&db, gruppe.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(geladen.id, gruppe.id);
 }
 
@@ -36,18 +44,24 @@ async fn server_gruppe_erstellen_und_laden() {
 async fn server_gruppe_mitglieder_verwalten() {
     let db = db().await;
 
-    let gruppe = ServerGroupRepository::create(&db, NeueServerGruppe {
-        name: "Moderatoren",
-        priority: 50,
-        is_default: false,
-    })
+    let gruppe = ServerGroupRepository::create(
+        &db,
+        NeueServerGruppe {
+            name: "Moderatoren",
+            priority: 50,
+            is_default: false,
+        },
+    )
     .await
     .unwrap();
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "moderator1",
-        password_hash: "hash",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "moderator1",
+            password_hash: "hash",
+        },
+    )
     .await
     .unwrap();
 
@@ -78,26 +92,38 @@ async fn server_gruppe_mitglieder_verwalten() {
 async fn server_gruppe_duplikat_mitglied_ignoriert() {
     let db = db().await;
 
-    let gruppe = ServerGroupRepository::create(&db, NeueServerGruppe {
-        name: "Users",
-        priority: 0,
-        is_default: true,
-    })
+    let gruppe = ServerGroupRepository::create(
+        &db,
+        NeueServerGruppe {
+            name: "Users",
+            priority: 0,
+            is_default: true,
+        },
+    )
     .await
     .unwrap();
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "doppelt",
-        password_hash: "hash",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "doppelt",
+            password_hash: "hash",
+        },
+    )
     .await
     .unwrap();
 
     // Doppeltes Hinzufuegen sollte kein Fehler sein (INSERT OR IGNORE)
-    ServerGroupRepository::add_member(&db, gruppe.id, user.id).await.unwrap();
-    ServerGroupRepository::add_member(&db, gruppe.id, user.id).await.unwrap();
+    ServerGroupRepository::add_member(&db, gruppe.id, user.id)
+        .await
+        .unwrap();
+    ServerGroupRepository::add_member(&db, gruppe.id, user.id)
+        .await
+        .unwrap();
 
-    let gruppen = ServerGroupRepository::list_for_user(&db, user.id).await.unwrap();
+    let gruppen = ServerGroupRepository::list_for_user(&db, user.id)
+        .await
+        .unwrap();
     assert_eq!(gruppen.len(), 1);
 }
 
@@ -108,11 +134,14 @@ async fn server_gruppe_standard_ermitteln() {
     let kein_default = ServerGroupRepository::get_default(&db).await.unwrap();
     assert!(kein_default.is_none());
 
-    ServerGroupRepository::create(&db, NeueServerGruppe {
-        name: "Gaeste",
-        priority: 0,
-        is_default: true,
-    })
+    ServerGroupRepository::create(
+        &db,
+        NeueServerGruppe {
+            name: "Gaeste",
+            priority: 0,
+            is_default: true,
+        },
+    )
     .await
     .unwrap();
 
@@ -125,11 +154,14 @@ async fn server_gruppe_standard_ermitteln() {
 async fn server_gruppe_loeschen() {
     let db = db().await;
 
-    let gruppe = ServerGroupRepository::create(&db, NeueServerGruppe {
-        name: "Temporaer",
-        priority: 1,
-        is_default: false,
-    })
+    let gruppe = ServerGroupRepository::create(
+        &db,
+        NeueServerGruppe {
+            name: "Temporaer",
+            priority: 1,
+            is_default: false,
+        },
+    )
     .await
     .unwrap();
 
@@ -154,7 +186,10 @@ async fn kanal_gruppe_erstellen_und_laden() {
 
     assert_eq!(gruppe.name, "VIP");
 
-    let geladen = ChannelGroupRepository::get(&db, gruppe.id).await.unwrap().unwrap();
+    let geladen = ChannelGroupRepository::get(&db, gruppe.id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(geladen.id, gruppe.id);
 }
 
@@ -166,17 +201,23 @@ async fn kanal_gruppe_user_zuweisung() {
         .await
         .unwrap();
 
-    let user = UserRepository::create(&db, NeuerBenutzer {
-        username: "speaker_user",
-        password_hash: "hash",
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "speaker_user",
+            password_hash: "hash",
+        },
+    )
     .await
     .unwrap();
 
-    let kanal = ChannelRepository::create(&db, NeuerKanal {
-        name: "Buehne",
-        ..Default::default()
-    })
+    let kanal = ChannelRepository::create(
+        &db,
+        NeuerKanal {
+            name: "Buehne",
+            ..Default::default()
+        },
+    )
     .await
     .unwrap();
 
@@ -207,17 +248,30 @@ async fn kanal_gruppe_user_zuweisung() {
 async fn kanal_gruppe_upsert() {
     let db = db().await;
 
-    let gruppe1 = ChannelGroupRepository::create(&db, NeueKanalGruppe { name: "Gruppe1" }).await.unwrap();
-    let gruppe2 = ChannelGroupRepository::create(&db, NeueKanalGruppe { name: "Gruppe2" }).await.unwrap();
-
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "upsert_user", password_hash: "hash" })
+    let gruppe1 = ChannelGroupRepository::create(&db, NeueKanalGruppe { name: "Gruppe1" })
+        .await
+        .unwrap();
+    let gruppe2 = ChannelGroupRepository::create(&db, NeueKanalGruppe { name: "Gruppe2" })
         .await
         .unwrap();
 
-    let kanal = ChannelRepository::create(&db, NeuerKanal {
-        name: "UpsertKanal",
-        ..Default::default()
-    })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "upsert_user",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap();
+
+    let kanal = ChannelRepository::create(
+        &db,
+        NeuerKanal {
+            name: "UpsertKanal",
+            ..Default::default()
+        },
+    )
     .await
     .unwrap();
 

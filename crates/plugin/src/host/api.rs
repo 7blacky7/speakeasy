@@ -98,11 +98,7 @@ pub fn host_log(kontext: &ApiKontext, level: i32, nachricht: &str) {
 }
 
 /// Verarbeitet einen speakeasy_send_message Aufruf
-pub fn host_send_message(
-    kontext: &ApiKontext,
-    _channel_id: &str,
-    _nachricht: &str,
-) -> ApiErgebnis {
+pub fn host_send_message(kontext: &ApiKontext, _channel_id: &str, _nachricht: &str) -> ApiErgebnis {
     if !kontext.chat_write {
         warn!(
             plugin = %kontext.plugin_name,
@@ -128,11 +124,7 @@ pub fn host_get_user_info(kontext: &ApiKontext, _user_id: &str) -> ApiErgebnis {
 }
 
 /// Verarbeitet einen speakeasy_kick_user Aufruf
-pub fn host_kick_user(
-    kontext: &ApiKontext,
-    _user_id: &str,
-    _grund: &str,
-) -> ApiErgebnis {
+pub fn host_kick_user(kontext: &ApiKontext, _user_id: &str, _grund: &str) -> ApiErgebnis {
     if !kontext.user_management {
         warn!(
             plugin = %kontext.plugin_name,
@@ -145,11 +137,7 @@ pub fn host_kick_user(
 }
 
 /// Verarbeitet einen speakeasy_move_user Aufruf
-pub fn host_move_user(
-    kontext: &ApiKontext,
-    _user_id: &str,
-    _channel_id: &str,
-) -> ApiErgebnis {
+pub fn host_move_user(kontext: &ApiKontext, _user_id: &str, _channel_id: &str) -> ApiErgebnis {
     if !kontext.user_management {
         return ApiErgebnis::ZugriffVerweigert;
     }

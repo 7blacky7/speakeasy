@@ -5,8 +5,8 @@
 
 use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::{Device, SampleFormat, Stream, StreamConfig};
-use ringbuf::{HeapRb, HeapProd, HeapCons};
-use ringbuf::traits::{Split, Producer};
+use ringbuf::traits::{Producer, Split};
+use ringbuf::{HeapCons, HeapProd, HeapRb};
 use tracing::{debug, error, warn};
 
 use crate::error::{AudioError, AudioResult};
@@ -94,7 +94,10 @@ pub fn open_capture_stream(
                 move |data: &[f32], _| {
                     let written = producer.push_slice(data);
                     if written < data.len() {
-                        warn!("Capture Ring-Buffer voll, {} Samples verworfen", data.len() - written);
+                        warn!(
+                            "Capture Ring-Buffer voll, {} Samples verworfen",
+                            data.len() - written
+                        );
                     }
                 },
                 err_fn,
@@ -105,7 +108,8 @@ pub fn open_capture_stream(
             .build_input_stream(
                 &stream_config,
                 move |data: &[i16], _| {
-                    let floats: Vec<f32> = data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
+                    let floats: Vec<f32> =
+                        data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
                     let written = producer.push_slice(&floats);
                     if written < floats.len() {
                         warn!("Capture Ring-Buffer voll");
@@ -119,10 +123,8 @@ pub fn open_capture_stream(
             .build_input_stream(
                 &stream_config,
                 move |data: &[u8], _| {
-                    let floats: Vec<f32> = data
-                        .iter()
-                        .map(|&s| (s as f32 - 128.0) / 128.0)
-                        .collect();
+                    let floats: Vec<f32> =
+                        data.iter().map(|&s| (s as f32 - 128.0) / 128.0).collect();
                     let written = producer.push_slice(&floats);
                     if written < floats.len() {
                         warn!("Capture Ring-Buffer voll");
@@ -149,7 +151,13 @@ pub fn open_capture_stream(
         config.sample_rate, config.channels
     );
 
-    Ok((CaptureStream { _stream: stream, config }, consumer))
+    Ok((
+        CaptureStream {
+            _stream: stream,
+            config,
+        },
+        consumer,
+    ))
 }
 
 #[cfg(test)]

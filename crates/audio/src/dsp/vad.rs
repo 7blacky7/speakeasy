@@ -217,12 +217,14 @@ mod tests {
     #[test]
     fn zcr_sinus_niedrig() {
         // Ein Sinus mit wenigen Nulldurchgaengen
-        let samples: Vec<f32> = (0..480)
-            .map(|i| (i as f32 * 0.05).sin())
-            .collect();
+        let samples: Vec<f32> = (0..480).map(|i| (i as f32 * 0.05).sin()).collect();
         let zcr = zero_crossing_rate(&samples);
         // Sinus mit niedriger Frequenz hat niedrige ZCR
-        assert!(zcr < 0.1, "Niederfrequenter Sinus hat niedrige ZCR: {}", zcr);
+        assert!(
+            zcr < 0.1,
+            "Niederfrequenter Sinus hat niedrige ZCR: {}",
+            zcr
+        );
     }
 
     #[test]

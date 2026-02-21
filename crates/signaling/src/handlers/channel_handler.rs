@@ -5,12 +5,11 @@
 //! Berechtigungen.
 
 use speakeasy_core::types::{ChannelId, UserId};
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::control::{
-    ChannelCreateResponse, ChannelInfo, ChannelJoinResponse, ChannelListResponse,
+    ChannelCreateRequest, ChannelCreateResponse, ChannelDeleteRequest, ChannelEditRequest,
+    ChannelInfo, ChannelJoinRequest, ChannelJoinResponse, ChannelLeaveRequest, ChannelListResponse,
     ClientInfo, ControlMessage, ControlPayload, ErrorCode,
-    ChannelJoinRequest, ChannelLeaveRequest, ChannelCreateRequest,
-    ChannelEditRequest, ChannelDeleteRequest,
 };
 use std::sync::Arc;
 
@@ -178,13 +177,11 @@ where
                 "Client ist nicht in diesem Channel",
             )
         }
-        None => {
-            ControlMessage::error(
-                request_id,
-                ErrorCode::NotFound,
-                "Client ist in keinem Channel",
-            )
-        }
+        None => ControlMessage::error(
+            request_id,
+            ErrorCode::NotFound,
+            "Client ist in keinem Channel",
+        ),
     }
 }
 

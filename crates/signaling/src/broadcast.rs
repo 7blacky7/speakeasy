@@ -101,7 +101,9 @@ impl EventBroadcaster {
             entry.value_mut().retain(|uid| uid != user_id);
         });
         // Leere Channel-Eintraege aufraumen
-        self.inner.channel_members.retain(|_, members| !members.is_empty());
+        self.inner
+            .channel_members
+            .retain(|_, members| !members.is_empty());
         tracing::debug!(user_id = %user_id, "Client aus Broadcaster entfernt");
     }
 
@@ -124,7 +126,9 @@ impl EventBroadcaster {
         self.inner.channel_members.iter_mut().for_each(|mut entry| {
             entry.value_mut().retain(|uid| uid != user_id);
         });
-        self.inner.channel_members.retain(|_, members| !members.is_empty());
+        self.inner
+            .channel_members
+            .retain(|_, members| !members.is_empty());
     }
 
     /// Sendet eine Nachricht an einen einzelnen Client
@@ -252,7 +256,6 @@ impl Default for EventBroadcaster {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     fn test_nachricht(id: u32) -> ControlMessage {
         ControlMessage::ping(id, 12345)

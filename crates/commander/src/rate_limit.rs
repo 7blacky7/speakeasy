@@ -243,6 +243,9 @@ mod tests {
         // Zeit simulieren: letzter_auffuellung in der Vergangenheit setzen
         bucket.letzter_auffuellung = Instant::now() - Duration::from_secs(2);
         // Jetzt sollten ~2 neue Token verfuegbar sein
-        assert!(bucket.verbrauchen(), "Nach 2 Sekunden sollte 1 Token verfuegbar sein");
+        assert!(
+            bucket.verbrauchen(),
+            "Nach 2 Sekunden sollte 1 Token verfuegbar sein"
+        );
     }
 }

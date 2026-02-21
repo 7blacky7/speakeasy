@@ -27,7 +27,9 @@ pub struct DtlsClientConfig {
 
 impl DtlsClientConfig {
     pub fn new() -> Self {
-        Self { expected_fingerprint: None }
+        Self {
+            expected_fingerprint: None,
+        }
     }
 
     pub fn with_fingerprint(fingerprint: String) -> Self {
@@ -52,8 +54,8 @@ pub fn generate_self_signed_cert(common_name: &str) -> CryptoResult<DtlsServerCo
     distinguished_name.push(rcgen::DnType::CommonName, common_name);
     params.distinguished_name = distinguished_name;
 
-    let key_pair = RcgenKeyPair::generate()
-        .map_err(|e| CryptoError::ZertifikatGenerierung(e.to_string()))?;
+    let key_pair =
+        RcgenKeyPair::generate().map_err(|e| CryptoError::ZertifikatGenerierung(e.to_string()))?;
 
     let cert = params
         .self_signed(&key_pair)
@@ -108,7 +110,9 @@ mod tests {
     #[test]
     fn self_signed_cert_pem_format() {
         let config = generate_self_signed_cert("test-server").unwrap();
-        assert!(config.certificate_pem.contains("-----BEGIN CERTIFICATE-----"));
+        assert!(config
+            .certificate_pem
+            .contains("-----BEGIN CERTIFICATE-----"));
         assert!(config.certificate_pem.contains("-----END CERTIFICATE-----"));
     }
 
@@ -125,10 +129,7 @@ mod tests {
     #[test]
     fn dtls_client_config_mit_fingerprint() {
         let config = DtlsClientConfig::with_fingerprint("AA:BB:CC".to_string());
-        assert_eq!(
-            config.expected_fingerprint,
-            Some("AA:BB:CC".to_string())
-        );
+        assert_eq!(config.expected_fingerprint, Some("AA:BB:CC".to_string()));
     }
 
     #[test]

@@ -509,12 +509,18 @@ pub struct ControlMessage {
 impl ControlMessage {
     /// Erstellt eine neue Control-Nachricht
     pub fn new(request_id: u32, payload: ControlPayload) -> Self {
-        Self { request_id, payload }
+        Self {
+            request_id,
+            payload,
+        }
     }
 
     /// Erstellt eine Ping-Nachricht
     pub fn ping(request_id: u32, timestamp_ms: u64) -> Self {
-        Self::new(request_id, ControlPayload::Ping(PingMessage { timestamp_ms }))
+        Self::new(
+            request_id,
+            ControlPayload::Ping(PingMessage { timestamp_ms }),
+        )
     }
 
     /// Erstellt eine Pong-Antwort

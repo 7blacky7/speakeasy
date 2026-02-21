@@ -64,7 +64,9 @@ impl PluginRegistry {
 
     /// Entfernt ein Plugin aus der Registry
     pub fn entfernen(&self, id: PluginId) -> Result<RegistryEintrag> {
-        let (_, eintrag) = self.eintraege.remove(&id)
+        let (_, eintrag) = self
+            .eintraege
+            .remove(&id)
             .ok_or_else(|| PluginError::NichtGefunden(id.to_string()))?;
         self.name_index.remove(&eintrag.name);
         Ok(eintrag)
@@ -83,7 +85,9 @@ impl PluginRegistry {
 
     /// Aktualisiert den Zustand eines Plugins
     pub fn zustand_setzen(&self, id: PluginId, state: PluginState) -> Result<()> {
-        let mut eintrag = self.eintraege.get_mut(&id)
+        let mut eintrag = self
+            .eintraege
+            .get_mut(&id)
             .ok_or_else(|| PluginError::NichtGefunden(id.to_string()))?;
         eintrag.state = state;
         Ok(())
@@ -151,7 +155,9 @@ mod tests {
         let registry = PluginRegistry::neu();
         let (id, name, version, pfad, trust) = test_eintrag("test-plugin");
 
-        registry.registrieren(id, name.clone(), version, pfad, trust).unwrap();
+        registry
+            .registrieren(id, name.clone(), version, pfad, trust)
+            .unwrap();
 
         let e = registry.per_id(id).unwrap();
         assert_eq!(e.name, name);
@@ -165,7 +171,13 @@ mod tests {
         let registry = PluginRegistry::neu();
         let (id1, name, version, pfad, trust) = test_eintrag("doppelt");
         registry
-            .registrieren(id1, name.clone(), version.clone(), pfad.clone(), trust.clone())
+            .registrieren(
+                id1,
+                name.clone(),
+                version.clone(),
+                pfad.clone(),
+                trust.clone(),
+            )
             .unwrap();
 
         let id2 = PluginId::new();
@@ -179,7 +191,9 @@ mod tests {
     fn entfernen_ok() {
         let registry = PluginRegistry::neu();
         let (id, name, version, pfad, trust) = test_eintrag("zu-entfernen");
-        registry.registrieren(id, name.clone(), version, pfad, trust).unwrap();
+        registry
+            .registrieren(id, name.clone(), version, pfad, trust)
+            .unwrap();
 
         registry.entfernen(id).unwrap();
         assert!(registry.per_id(id).is_none());
@@ -197,7 +211,9 @@ mod tests {
     fn zustand_setzen() {
         let registry = PluginRegistry::neu();
         let (id, name, version, pfad, trust) = test_eintrag("state-test");
-        registry.registrieren(id, name, version, pfad, trust).unwrap();
+        registry
+            .registrieren(id, name, version, pfad, trust)
+            .unwrap();
 
         registry.zustand_setzen(id, PluginState::Aktiv).unwrap();
         assert_eq!(registry.per_id(id).unwrap().state, PluginState::Aktiv);

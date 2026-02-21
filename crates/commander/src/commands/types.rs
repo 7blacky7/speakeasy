@@ -59,22 +59,13 @@ pub enum Command {
         ip_bannen: bool,
     },
     /// Client in anderen Kanal verschieben
-    ClientVerschieben {
-        client_id: Uuid,
-        kanal_id: Uuid,
-    },
+    ClientVerschieben { client_id: Uuid, kanal_id: Uuid },
     /// Client anpiken (Poke)
-    ClientPoken {
-        client_id: Uuid,
-        nachricht: String,
-    },
+    ClientPoken { client_id: Uuid, nachricht: String },
 
     // --- Berechtigungen ---
     /// Berechtigungen fuer ein Ziel abfragen
-    BerechtigungListe {
-        ziel: String,
-        scope: String,
-    },
+    BerechtigungListe { ziel: String, scope: String },
     /// Berechtigung setzen
     BerechtigungSetzen {
         ziel: String,

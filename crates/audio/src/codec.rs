@@ -24,9 +24,7 @@ pub struct OpusEncoder {
 impl OpusEncoder {
     /// Erstellt einen neuen Encoder mit der gegebenen Konfiguration
     pub fn new(config: OpusConfig) -> AudioResult<Self> {
-        config
-            .validieren()
-            .map_err(AudioError::Konfiguration)?;
+        config.validieren().map_err(AudioError::Konfiguration)?;
 
         let sample_rate = protocol_rate_to_audiopus(config.sample_rate)?;
         let channels = protocol_channels_to_audiopus(config.channels);
@@ -126,8 +124,7 @@ impl OpusDecoder {
         let sr = protocol_rate_to_audiopus(sample_rate)?;
         let ch = protocol_channels_to_audiopus(channels);
 
-        let decoder = Decoder::new(sr, ch)
-            .map_err(|e| AudioError::CodecFehler(e.to_string()))?;
+        let decoder = Decoder::new(sr, ch).map_err(|e| AudioError::CodecFehler(e.to_string()))?;
 
         // Standardmaessig 20ms Frame-Groesse
         let frame_size = FrameSizeMs::Ms20.samples_per_frame(sample_rate) as usize;
@@ -316,7 +313,11 @@ mod tests {
         ] {
             let config = preset.config();
             let result = OpusEncoder::new(config);
-            assert!(result.is_ok(), "Preset {:?} sollte Encoder erstellen koennen", preset);
+            assert!(
+                result.is_ok(),
+                "Preset {:?} sollte Encoder erstellen koennen",
+                preset
+            );
         }
     }
 }

@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PluginEvent {
     /// Benutzer tritt einem Kanal bei
-    UserJoin {
-        user_id: String,
-        channel_id: String,
-    },
+    UserJoin { user_id: String, channel_id: String },
     /// Benutzer verlaesst einen Kanal
     UserLeave {
         user_id: String,
@@ -26,28 +23,17 @@ pub enum PluginEvent {
         content: String,
     },
     /// Sprach-Uebertragung beginnt
-    VoiceStart {
-        user_id: String,
-        channel_id: String,
-    },
+    VoiceStart { user_id: String, channel_id: String },
     /// Sprach-Uebertragung endet
-    VoiceStop {
-        user_id: String,
-        channel_id: String,
-    },
+    VoiceStop { user_id: String, channel_id: String },
     /// Server wird gestartet
     ServerStart,
     /// Server wird gestoppt
     ServerStop,
     /// Kanal wird erstellt
-    ChannelCreate {
-        channel_id: String,
-        name: String,
-    },
+    ChannelCreate { channel_id: String, name: String },
     /// Kanal wird geloescht
-    ChannelDelete {
-        channel_id: String,
-    },
+    ChannelDelete { channel_id: String },
 }
 
 impl PluginEvent {
@@ -139,14 +125,18 @@ mod tests {
 
     #[test]
     fn hook_result_deny_nicht_erlaubt() {
-        let r = HookResult::Deny { reason: "Spam".into() };
+        let r = HookResult::Deny {
+            reason: "Spam".into(),
+        };
         assert!(!r.ist_erlaubt());
         assert_eq!(r.ablehnungsgrund(), Some("Spam"));
     }
 
     #[test]
     fn hook_result_modify_ist_erlaubt() {
-        let r = HookResult::Modify { data: vec![1, 2, 3] };
+        let r = HookResult::Modify {
+            data: vec![1, 2, 3],
+        };
         assert!(r.ist_erlaubt());
         assert!(r.ablehnungsgrund().is_none());
     }
@@ -155,7 +145,9 @@ mod tests {
     fn kombinieren_erstes_deny_gewinnt() {
         let ergebnisse = vec![
             HookResult::Allow,
-            HookResult::Deny { reason: "Verboten".into() },
+            HookResult::Deny {
+                reason: "Verboten".into(),
+            },
             HookResult::Allow,
         ];
         let r = hook_ergebnisse_kombinieren(ergebnisse);

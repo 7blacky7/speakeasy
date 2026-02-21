@@ -102,10 +102,7 @@ impl ApiTokenStore {
     ///
     /// Gibt den Token-Record und den Klartextwert zurueck.
     /// Der Klartextwert wird NUR einmal zurueckgegeben und nicht gespeichert!
-    pub async fn erstellen(
-        &self,
-        eingabe: NeuesApiToken,
-    ) -> AuthResult<ErstellterApiToken> {
+    pub async fn erstellen(&self, eingabe: NeuesApiToken) -> AuthResult<ErstellterApiToken> {
         let token_wert = api_token_generieren();
         let token_hash = crate::password::passwort_hashen(&token_wert)?;
         let token_praefix = token_wert.chars().take(8).collect::<String>();
@@ -124,10 +121,7 @@ impl ApiTokenStore {
 
         self.tokens.write().await.push(record.clone());
 
-        Ok(ErstellterApiToken {
-            record,
-            token_wert,
-        })
+        Ok(ErstellterApiToken { record, token_wert })
     }
 
     /// Validiert einen API-Token-Wert
@@ -170,7 +164,11 @@ impl ApiTokenStore {
     /// Gibt alle Tokens eines Benutzers zurueck
     pub async fn liste_fuer_user(&self, user_id: Uuid) -> Vec<ApiTokenRecord> {
         let tokens = self.tokens.read().await;
-        tokens.iter().filter(|t| t.user_id == user_id).cloned().collect()
+        tokens
+            .iter()
+            .filter(|t| t.user_id == user_id)
+            .cloned()
+            .collect()
     }
 
     /// Laedt Token-Records in den Cache (beim Server-Start aus DB)
@@ -185,9 +183,7 @@ impl ApiTokenStore {
         let jetzt = Utc::now();
         let mut tokens = self.tokens.write().await;
         let vorher = tokens.len();
-        tokens.retain(|t| {
-            t.widerrufen || t.laeuft_ab_am.is_none_or(|ablauf| ablauf > jetzt)
-        });
+        tokens.retain(|t| t.widerrufen || t.laeuft_ab_am.is_none_or(|ablauf| ablauf > jetzt));
         vorher - tokens.len()
     }
 }
@@ -198,10 +194,7 @@ impl ApiTokenStore {
 fn api_token_generieren() -> String {
     let mut bytes = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut bytes);
-    let encoded = base64::Engine::encode(
-        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
-        bytes,
-    );
+    let encoded = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, bytes);
     format!("sk_{}", encoded)
 }
 
@@ -279,7 +272,10 @@ mod tests {
         };
         assert!(record.ist_gueltig());
 
-        let widerrufener = ApiTokenRecord { widerrufen: true, ..record.clone() };
+        let widerrufener = ApiTokenRecord {
+            widerrufen: true,
+            ..record.clone()
+        };
         assert!(!widerrufener.ist_gueltig());
 
         let abgelaufener = ApiTokenRecord {

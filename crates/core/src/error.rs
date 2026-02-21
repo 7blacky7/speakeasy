@@ -94,7 +94,10 @@ mod tests {
     #[test]
     fn fehler_anzeige() {
         let e = SpeakeasyError::Authentifizierung("Falsches Passwort".into());
-        assert_eq!(e.to_string(), "Authentifizierung fehlgeschlagen: Falsches Passwort");
+        assert_eq!(
+            e.to_string(),
+            "Authentifizierung fehlgeschlagen: Falsches Passwort"
+        );
     }
 
     #[test]
@@ -105,7 +108,10 @@ mod tests {
 
     #[test]
     fn protokoll_version_fehler() {
-        let e = SpeakeasyError::ProtokollVersion { erwartet: 1, erhalten: 2 };
+        let e = SpeakeasyError::ProtokollVersion {
+            erwartet: 1,
+            erhalten: 2,
+        };
         assert!(e.to_string().contains("erwartet=1"));
         assert!(e.to_string().contains("erhalten=2"));
     }

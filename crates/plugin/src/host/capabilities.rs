@@ -20,22 +20,35 @@ pub fn hat_faehigkeit(caps: &Capabilities, faehigkeit: &str) -> bool {
 /// Gibt alle aktivierten Capabilities als String-Liste zurueck
 pub fn aktivierte_faehigkeiten(caps: &Capabilities) -> Vec<&'static str> {
     let mut liste = Vec::new();
-    if caps.filesystem { liste.push("filesystem"); }
-    if caps.network { liste.push("network"); }
-    if caps.audio_read { liste.push("audio_read"); }
-    if caps.audio_write { liste.push("audio_write"); }
-    if caps.chat_read { liste.push("chat_read"); }
-    if caps.chat_write { liste.push("chat_write"); }
-    if caps.user_management { liste.push("user_management"); }
-    if caps.server_config { liste.push("server_config"); }
+    if caps.filesystem {
+        liste.push("filesystem");
+    }
+    if caps.network {
+        liste.push("network");
+    }
+    if caps.audio_read {
+        liste.push("audio_read");
+    }
+    if caps.audio_write {
+        liste.push("audio_write");
+    }
+    if caps.chat_read {
+        liste.push("chat_read");
+    }
+    if caps.chat_write {
+        liste.push("chat_write");
+    }
+    if caps.user_management {
+        liste.push("user_management");
+    }
+    if caps.server_config {
+        liste.push("server_config");
+    }
     liste
 }
 
 /// Prueft ob eine Capability-Anfrage mit den deklarierten Capabilities uebereinstimmt
-pub fn capabilities_pruefen(
-    deklariert: &Capabilities,
-    benoetigt: &[&str],
-) -> Result<(), String> {
+pub fn capabilities_pruefen(deklariert: &Capabilities, benoetigt: &[&str]) -> Result<(), String> {
     for cap in benoetigt {
         if !hat_faehigkeit(deklariert, cap) {
             return Err(format!("Capability '{}' nicht deklariert", cap));

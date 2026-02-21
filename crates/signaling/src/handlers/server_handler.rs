@@ -4,7 +4,7 @@
 //! erfordern Admin-Berechtigungen (b_server_modify / b_server_stop).
 
 use speakeasy_core::types::{ChannelId, UserId};
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, ServerEditRequest, ServerInfoResponse,
     ServerStopRequest,
@@ -90,7 +90,9 @@ where
         request_id,
         ControlPayload::ServerInfoResponse(ServerInfoResponse {
             server_id: state.config.server_id,
-            name: request.name.unwrap_or_else(|| state.config.server_name.clone()),
+            name: request
+                .name
+                .unwrap_or_else(|| state.config.server_name.clone()),
             welcome_message: request
                 .welcome_message
                 .or_else(|| state.config.welcome_message.clone()),

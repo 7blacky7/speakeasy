@@ -114,12 +114,7 @@ impl VoiceState {
     }
 
     /// Registriert einen neuen Client
-    pub fn client_registrieren(
-        &self,
-        user_id: UserId,
-        ssrc: u32,
-        udp_endpunkt: SocketAddr,
-    ) {
+    pub fn client_registrieren(&self, user_id: UserId, ssrc: u32, udp_endpunkt: SocketAddr) {
         let state = ClientVoiceState::neu(user_id, ssrc, udp_endpunkt);
         self.inner.clients.insert(user_id, state);
         self.inner.ssrc_index.insert(ssrc, user_id);
@@ -155,7 +150,10 @@ impl VoiceState {
     }
 
     /// Gibt eine Referenz auf den Client-State zurueck (shared lock)
-    pub fn client_state(&self, user_id: &UserId) -> Option<dashmap::mapref::one::Ref<'_, UserId, ClientVoiceState>> {
+    pub fn client_state(
+        &self,
+        user_id: &UserId,
+    ) -> Option<dashmap::mapref::one::Ref<'_, UserId, ClientVoiceState>> {
         self.inner.clients.get(user_id)
     }
 

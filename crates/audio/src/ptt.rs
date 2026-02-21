@@ -144,7 +144,10 @@ mod tests {
         ptt.key_down();
         assert!(ptt.is_transmitting());
         ptt.set_mode(PttMode::Toggle);
-        assert!(!ptt.is_transmitting(), "Nach Moduswechsel sollte nichts aktiv sein");
+        assert!(
+            !ptt.is_transmitting(),
+            "Nach Moduswechsel sollte nichts aktiv sein"
+        );
         assert!(!ptt.key_held);
     }
 

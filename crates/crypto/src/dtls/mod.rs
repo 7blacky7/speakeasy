@@ -12,7 +12,6 @@ pub mod server;
 
 pub use client::DtlsClient;
 pub use config::{
-    compute_certificate_fingerprint, generate_self_signed_cert, DtlsClientConfig,
-    DtlsServerConfig,
+    compute_certificate_fingerprint, generate_self_signed_cert, DtlsClientConfig, DtlsServerConfig,
 };
 pub use server::DtlsServer;

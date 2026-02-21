@@ -35,15 +35,17 @@ impl ParsedCommand {
     /// Gibt einen Parameter als UUID zurueck
     pub fn uuid_param(&self, key: &str) -> CommanderResult<uuid::Uuid> {
         let s = self.required_param(key)?;
-        uuid::Uuid::parse_str(s)
-            .map_err(|_| CommanderError::UngueltigeEingabe(format!("Ungueltige UUID fuer '{key}': {s}")))
+        uuid::Uuid::parse_str(s).map_err(|_| {
+            CommanderError::UngueltigeEingabe(format!("Ungueltige UUID fuer '{key}': {s}"))
+        })
     }
 
     /// Gibt einen Parameter als u64 zurueck
     pub fn u64_param(&self, key: &str) -> CommanderResult<u64> {
         let s = self.required_param(key)?;
-        s.parse::<u64>()
-            .map_err(|_| CommanderError::UngueltigeEingabe(format!("Ungueltige Zahl fuer '{key}': {s}")))
+        s.parse::<u64>().map_err(|_| {
+            CommanderError::UngueltigeEingabe(format!("Ungueltige Zahl fuer '{key}': {s}"))
+        })
     }
 }
 

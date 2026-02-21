@@ -6,8 +6,8 @@
 use speakeasy_core::types::{ChannelId, UserId};
 use speakeasy_db::{
     models::{BerechtigungsWert, BerechtigungsZiel, TriState},
-    BanRepository, PermissionRepository,
     repository::UserRepository,
+    BanRepository, PermissionRepository,
 };
 use speakeasy_protocol::control::{
     ControlMessage, ControlPayload, ErrorCode, PermissionAddRequest, PermissionEntry,
@@ -210,10 +210,7 @@ where
     );
 
     // Cache invalidieren damit naechste Abfrage aus DB liest
-    state
-        .permission_service
-        .cache_komplett_invalidieren()
-        .await;
+    state.permission_service.cache_komplett_invalidieren().await;
 
     ControlMessage::new(
         request_id,
@@ -266,10 +263,7 @@ where
         "Permission entfernt"
     );
 
-    state
-        .permission_service
-        .cache_komplett_invalidieren()
-        .await;
+    state.permission_service.cache_komplett_invalidieren().await;
 
     ControlMessage::new(
         request_id,

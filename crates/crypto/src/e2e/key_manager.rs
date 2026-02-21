@@ -134,9 +134,9 @@ impl GroupKeyManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
     use rand::rngs::OsRng;
     use rand::RngCore;
+    use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
     fn random_x25519_pair() -> ([u8; 32], [u8; 32]) {
         let mut priv_bytes = [0u8; 32];
@@ -234,10 +234,7 @@ mod tests {
         assert!(distributed.contains_key("user-1"));
         assert!(distributed.contains_key("user-2"));
         // Jeder Empfaenger erhaelt einen anderen wrapped key
-        assert_ne!(
-            distributed["user-1"],
-            distributed["user-2"]
-        );
+        assert_ne!(distributed["user-1"], distributed["user-2"]);
     }
 
     #[test]

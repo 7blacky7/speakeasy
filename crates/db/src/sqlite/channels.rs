@@ -199,9 +199,7 @@ pub(crate) fn row_to_kanal(row: &sqlx::sqlite::SqliteRow) -> DbResult<KanalRecor
         .with_timezone(&Utc);
 
     let typ_str: String = row.try_get("channel_type")?;
-    let channel_type = typ_str
-        .parse::<KanalTyp>()
-        .map_err(DbError::intern)?;
+    let channel_type = typ_str.parse::<KanalTyp>().map_err(DbError::intern)?;
 
     let is_default: i64 = row.try_get("is_default")?;
 

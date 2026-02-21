@@ -227,54 +227,52 @@ fn audio_engine_thread(
 
     loop {
         match cmd_rx.recv() {
-            Ok(cmd) => {
-                match cmd {
-                    AudioCommand::StartCapture => {
-                        state.write().capture_active = true;
-                        info!("Capture gestartet");
-                    }
-                    AudioCommand::StopCapture => {
-                        state.write().capture_active = false;
-                        info!("Capture gestoppt");
-                    }
-                    AudioCommand::StartPlayback => {
-                        state.write().playback_active = true;
-                        info!("Playback gestartet");
-                    }
-                    AudioCommand::StopPlayback => {
-                        state.write().playback_active = false;
-                        info!("Playback gestoppt");
-                    }
-                    AudioCommand::SetInputDevice(id) => {
-                        state.write().config.input_device = Some(id.clone());
-                        info!("Eingabegeraet gewechselt: {}", id);
-                    }
-                    AudioCommand::SetOutputDevice(id) => {
-                        state.write().config.output_device = Some(id.clone());
-                        info!("Ausgabegeraet gewechselt: {}", id);
-                    }
-                    AudioCommand::PttKeyDown => {
-                        ptt.key_down();
-                        state.write().stats.is_transmitting = ptt.is_transmitting();
-                    }
-                    AudioCommand::PttKeyUp => {
-                        ptt.key_up();
-                        state.write().stats.is_transmitting = ptt.is_transmitting();
-                    }
-                    AudioCommand::PttToggle => {
-                        ptt.toggle();
-                        state.write().stats.is_transmitting = ptt.is_transmitting();
-                    }
-                    AudioCommand::SetMuted(muted) => {
-                        ptt.set_muted(muted);
-                        state.write().stats.is_transmitting = ptt.is_transmitting();
-                    }
-                    AudioCommand::Shutdown => {
-                        info!("Audio-Engine Thread beendet");
-                        break;
-                    }
+            Ok(cmd) => match cmd {
+                AudioCommand::StartCapture => {
+                    state.write().capture_active = true;
+                    info!("Capture gestartet");
                 }
-            }
+                AudioCommand::StopCapture => {
+                    state.write().capture_active = false;
+                    info!("Capture gestoppt");
+                }
+                AudioCommand::StartPlayback => {
+                    state.write().playback_active = true;
+                    info!("Playback gestartet");
+                }
+                AudioCommand::StopPlayback => {
+                    state.write().playback_active = false;
+                    info!("Playback gestoppt");
+                }
+                AudioCommand::SetInputDevice(id) => {
+                    state.write().config.input_device = Some(id.clone());
+                    info!("Eingabegeraet gewechselt: {}", id);
+                }
+                AudioCommand::SetOutputDevice(id) => {
+                    state.write().config.output_device = Some(id.clone());
+                    info!("Ausgabegeraet gewechselt: {}", id);
+                }
+                AudioCommand::PttKeyDown => {
+                    ptt.key_down();
+                    state.write().stats.is_transmitting = ptt.is_transmitting();
+                }
+                AudioCommand::PttKeyUp => {
+                    ptt.key_up();
+                    state.write().stats.is_transmitting = ptt.is_transmitting();
+                }
+                AudioCommand::PttToggle => {
+                    ptt.toggle();
+                    state.write().stats.is_transmitting = ptt.is_transmitting();
+                }
+                AudioCommand::SetMuted(muted) => {
+                    ptt.set_muted(muted);
+                    state.write().stats.is_transmitting = ptt.is_transmitting();
+                }
+                AudioCommand::Shutdown => {
+                    info!("Audio-Engine Thread beendet");
+                    break;
+                }
+            },
             Err(e) => {
                 error!("Audio-Engine Kanal-Fehler: {}", e);
                 break;
@@ -350,7 +348,10 @@ mod tests {
         engine.ptt_key_down().unwrap();
         engine.set_muted(true).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(10));
-        assert!(!engine.get_audio_stats().is_transmitting, "Mute sollte Sendung verhindern");
+        assert!(
+            !engine.get_audio_stats().is_transmitting,
+            "Mute sollte Sendung verhindern"
+        );
     }
 
     #[test]

@@ -102,11 +102,7 @@ impl<R: ChatMessageRepository> ChatService<R> {
     }
 
     /// Nachricht weich loeschen (Soft-Delete)
-    pub async fn nachricht_loeschen(
-        &self,
-        message_id: Uuid,
-        requester_id: Uuid,
-    ) -> ChatResult<()> {
+    pub async fn nachricht_loeschen(&self, message_id: Uuid, requester_id: Uuid) -> ChatResult<()> {
         let existing = self
             .repo
             .get_by_id(message_id)
@@ -128,10 +124,7 @@ impl<R: ChatMessageRepository> ChatService<R> {
     }
 
     /// Nachrichten-History eines Kanals laden (Cursor-Pagination)
-    pub async fn history_laden(
-        &self,
-        anfrage: HistoryAnfrage,
-    ) -> ChatResult<Vec<ChatNachricht>> {
+    pub async fn history_laden(&self, anfrage: HistoryAnfrage) -> ChatResult<Vec<ChatNachricht>> {
         let records = self
             .repo
             .get_history(NachrichtenFilter {

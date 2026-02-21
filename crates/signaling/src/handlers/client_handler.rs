@@ -4,7 +4,7 @@
 //! Permission-Keys folgen dem TeamSpeak-aehnlichen Schema (b_client_*).
 
 use speakeasy_core::types::{ChannelId, UserId};
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::control::{
     ClientBanRequest, ClientInfo, ClientKickRequest, ClientListResponse, ClientMoveRequest,
     ClientPokeRequest, ClientUpdateRequest, ControlMessage, ControlPayload, ErrorCode,
@@ -98,11 +98,7 @@ where
 
     // Ziel-Client pruefen
     if !state.presence.ist_online(&request.target_user_id) {
-        return ControlMessage::error(
-            request_id,
-            ErrorCode::NotFound,
-            "Client nicht verbunden",
-        );
+        return ControlMessage::error(request_id, ErrorCode::NotFound, "Client nicht verbunden");
     }
 
     let grund = request.reason.as_deref().unwrap_or("Gekickt");
@@ -111,7 +107,9 @@ where
         // Nur aus Channel entfernen
         state.presence.channel_verlassen(&request.target_user_id);
         state.broadcaster.channel_verlassen(&request.target_user_id);
-        state.channel_router.kanal_verlassen(&request.target_user_id);
+        state
+            .channel_router
+            .kanal_verlassen(&request.target_user_id);
         tracing::info!(
             actor = %actor_id,
             target = %request.target_user_id,
@@ -126,13 +124,17 @@ where
             ErrorCode::InvalidRequest,
             format!("Du wurdest gekickt: {}", grund),
         );
-        state.broadcaster.an_user_senden(&request.target_user_id, kick_msg);
+        state
+            .broadcaster
+            .an_user_senden(&request.target_user_id, kick_msg);
 
         // Cleanup im Presence-Manager (Verbindungstrennung folgt)
         state.presence.client_getrennt(&request.target_user_id);
         state.broadcaster.client_entfernen(&request.target_user_id);
         state.voice_state.client_entfernen(&request.target_user_id);
-        state.channel_router.kanal_verlassen(&request.target_user_id);
+        state
+            .channel_router
+            .kanal_verlassen(&request.target_user_id);
 
         tracing::info!(
             actor = %actor_id,
@@ -203,11 +205,15 @@ where
                 ErrorCode::Banned,
                 format!("Du wurdest gebannt: {}", grund),
             );
-            state.broadcaster.an_user_senden(&request.target_user_id, ban_msg);
+            state
+                .broadcaster
+                .an_user_senden(&request.target_user_id, ban_msg);
             state.presence.client_getrennt(&request.target_user_id);
             state.broadcaster.client_entfernen(&request.target_user_id);
             state.voice_state.client_entfernen(&request.target_user_id);
-            state.channel_router.kanal_verlassen(&request.target_user_id);
+            state
+                .channel_router
+                .kanal_verlassen(&request.target_user_id);
 
             tracing::info!(
                 actor = %actor_id,
@@ -262,11 +268,7 @@ where
     }
 
     if !state.presence.ist_online(&request.target_user_id) {
-        return ControlMessage::error(
-            request_id,
-            ErrorCode::NotFound,
-            "Client nicht verbunden",
-        );
+        return ControlMessage::error(request_id, ErrorCode::NotFound, "Client nicht verbunden");
     }
 
     // Client in neuen Channel verschieben
@@ -293,7 +295,9 @@ where
             },
         ),
     );
-    state.broadcaster.an_user_senden(&request.target_user_id, move_msg);
+    state
+        .broadcaster
+        .an_user_senden(&request.target_user_id, move_msg);
 
     tracing::info!(
         actor = %actor_id,
@@ -342,11 +346,7 @@ where
     }
 
     if !state.presence.ist_online(&request.target_user_id) {
-        return ControlMessage::error(
-            request_id,
-            ErrorCode::NotFound,
-            "Client nicht verbunden",
-        );
+        return ControlMessage::error(request_id, ErrorCode::NotFound, "Client nicht verbunden");
     }
 
     // Poke-Nachricht an Ziel-Client senden
@@ -358,7 +358,9 @@ where
             message: format!("[Von {}] {}", actor_id, request.message),
         }),
     );
-    state.broadcaster.an_user_senden(&request.target_user_id, poke_nachricht);
+    state
+        .broadcaster
+        .an_user_senden(&request.target_user_id, poke_nachricht);
 
     tracing::debug!(
         actor = %actor_id,
@@ -387,7 +389,9 @@ where
         let neues_input_muted = request.is_input_muted.unwrap_or(presence.is_input_muted);
         let neues_output_muted = request.is_output_muted.unwrap_or(presence.is_output_muted);
 
-        state.presence.status_aktualisieren(user_id, neues_input_muted, neues_output_muted);
+        state
+            .presence
+            .status_aktualisieren(user_id, neues_input_muted, neues_output_muted);
 
         tracing::debug!(
             user_id = %user_id,

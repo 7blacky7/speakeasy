@@ -22,8 +22,8 @@ use speakeasy_db::{
 use crate::{
     auth::CommanderSession,
     commands::types::{
-        BerechtigungsEintrag, BerechtigungsWertInput, Command, KanalInfo,
-        LogEintrag, Response, ServerInfoResponse,
+        BerechtigungsEintrag, BerechtigungsWertInput, Command, KanalInfo, LogEintrag, Response,
+        ServerInfoResponse,
     },
     error::{CommanderError, CommanderResult},
 };
@@ -99,7 +99,10 @@ where
 
     /// Prueft ob der Benutzer aktuell gebannt ist.
     async fn ban_pruefen(&self, session: &CommanderSession) -> CommanderResult<()> {
-        let ban = self.ban_repo.is_banned(Some(session.benutzer.id), None).await?;
+        let ban = self
+            .ban_repo
+            .is_banned(Some(session.benutzer.id), None)
+            .await?;
         if ban.is_some() {
             return Err(CommanderError::NichtAutorisiert(
                 "Benutzer ist gesperrt".into(),
@@ -144,8 +147,14 @@ where
                 max_clients,
                 host_nachricht,
             } => {
-                self.server_bearbeiten(session, name, willkommensnachricht, max_clients, host_nachricht)
-                    .await
+                self.server_bearbeiten(
+                    session,
+                    name,
+                    willkommensnachricht,
+                    max_clients,
+                    host_nachricht,
+                )
+                .await
             }
             Command::ServerStop { grund } => self.server_stoppen(session, grund).await,
 
@@ -160,8 +169,16 @@ where
                 sort_order,
                 permanent: _,
             } => {
-                self.kanal_erstellen(session, name, parent_id, thema, passwort, max_clients, sort_order)
-                    .await
+                self.kanal_erstellen(
+                    session,
+                    name,
+                    parent_id,
+                    thema,
+                    passwort,
+                    max_clients,
+                    sort_order,
+                )
+                .await
             }
             Command::KanalBearbeiten {
                 id,
@@ -169,7 +186,10 @@ where
                 thema,
                 max_clients,
                 sort_order,
-            } => self.kanal_bearbeiten(session, id, name, thema, max_clients, sort_order).await,
+            } => {
+                self.kanal_bearbeiten(session, id, name, thema, max_clients, sort_order)
+                    .await
+            }
             Command::KanalLoeschen { id } => self.kanal_loeschen(session, id).await,
 
             // --- Clients ---
@@ -186,12 +206,14 @@ where
                 self.client_bannen(session, client_id, dauer_secs, grund, ip_bannen)
                     .await
             }
-            Command::ClientVerschieben { client_id, kanal_id } => {
-                self.client_verschieben(session, client_id, kanal_id).await
-            }
-            Command::ClientPoken { client_id, nachricht } => {
-                self.client_poken(session, client_id, nachricht).await
-            }
+            Command::ClientVerschieben {
+                client_id,
+                kanal_id,
+            } => self.client_verschieben(session, client_id, kanal_id).await,
+            Command::ClientPoken {
+                client_id,
+                nachricht,
+            } => self.client_poken(session, client_id, nachricht).await,
 
             // --- Berechtigungen ---
             Command::BerechtigungListe { ziel, scope } => {
@@ -202,12 +224,18 @@ where
                 permission,
                 wert,
                 scope,
-            } => self.berechtigung_setzen(session, ziel, permission, wert, scope).await,
+            } => {
+                self.berechtigung_setzen(session, ziel, permission, wert, scope)
+                    .await
+            }
             Command::BerechtigungEntfernen {
                 ziel,
                 permission,
                 scope,
-            } => self.berechtigung_entfernen(session, ziel, permission, scope).await,
+            } => {
+                self.berechtigung_entfernen(session, ziel, permission, scope)
+                    .await
+            }
 
             // --- Dateien ---
             Command::DateiListe { kanal_id } => self.datei_liste(kanal_id).await,
@@ -553,11 +581,7 @@ where
     // Berechtigungs-Befehle
     // -----------------------------------------------------------------------
 
-    async fn berechtigung_liste(
-        &self,
-        ziel: String,
-        scope: String,
-    ) -> CommanderResult<Response> {
+    async fn berechtigung_liste(&self, ziel: String, scope: String) -> CommanderResult<Response> {
         let (ziel_parsed, kanal_id) = ziel_parsen(&ziel, &scope)?;
         let eintraege = self
             .permission_repo
@@ -692,19 +716,15 @@ where
 
 /// Parst ein Ziel-String ("user:<uuid>", "server_group:<uuid>", "server_default")
 /// und einen Scope-String ("server" oder "channel:<uuid>") in DB-Typen.
-fn ziel_parsen(
-    ziel: &str,
-    scope: &str,
-) -> CommanderResult<(BerechtigungsZiel, Option<Uuid>)> {
+fn ziel_parsen(ziel: &str, scope: &str) -> CommanderResult<(BerechtigungsZiel, Option<Uuid>)> {
     let ziel_parsed = if ziel == "server_default" {
         BerechtigungsZiel::ServerDefault
     } else {
         let (typ, id_str) = ziel.split_once(':').ok_or_else(|| {
             CommanderError::UngueltigeEingabe(format!("Ungueltiges Ziel-Format: {ziel}"))
         })?;
-        let id = Uuid::parse_str(id_str).map_err(|_| {
-            CommanderError::UngueltigeEingabe(format!("Ungueltige UUID: {id_str}"))
-        })?;
+        let id = Uuid::parse_str(id_str)
+            .map_err(|_| CommanderError::UngueltigeEingabe(format!("Ungueltige UUID: {id_str}")))?;
         match typ {
             "user" => BerechtigungsZiel::Benutzer(id),
             "server_group" => BerechtigungsZiel::ServerGruppe(id),
@@ -779,9 +799,11 @@ mod tests {
     fn ziel_parsen_kanal_scope() {
         let kanal_id = Uuid::new_v4();
         let gruppe_id = Uuid::new_v4();
-        let (_, kanal) =
-            ziel_parsen(&format!("server_group:{gruppe_id}"), &format!("channel:{kanal_id}"))
-                .unwrap();
+        let (_, kanal) = ziel_parsen(
+            &format!("server_group:{gruppe_id}"),
+            &format!("channel:{kanal_id}"),
+        )
+        .unwrap();
         assert_eq!(kanal, Some(kanal_id));
     }
 

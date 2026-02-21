@@ -30,20 +30,18 @@ pub fn tcp_befehl_zu_command(cmd: &ParsedCommand) -> CommanderResult<Command> {
             let name = cmd.required_param("name")?.to_string();
             Ok(Command::KanalErstellen {
                 name,
-                parent_id: cmd
-                    .param("cpid")
-                    .and_then(|s| Uuid::parse_str(s).ok()),
+                parent_id: cmd.param("cpid").and_then(|s| Uuid::parse_str(s).ok()),
                 thema: cmd.param("topic").map(String::from),
                 passwort: cmd.param("password").map(String::from),
                 max_clients: cmd
                     .param("maxclients")
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0),
-                sort_order: cmd
-                    .param("order")
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0),
-                permanent: cmd.param("channel_flag_permanent").map(|s| s == "1").unwrap_or(false),
+                sort_order: cmd.param("order").and_then(|s| s.parse().ok()).unwrap_or(0),
+                permanent: cmd
+                    .param("channel_flag_permanent")
+                    .map(|s| s == "1")
+                    .unwrap_or(false),
             })
         }
         "channeledit" => {
@@ -108,8 +106,14 @@ pub fn tcp_befehl_zu_command(cmd: &ParsedCommand) -> CommanderResult<Command> {
 
         // --- Logs ---
         "logview" => Ok(Command::LogAbfragen {
-            limit: cmd.param("lines").and_then(|s| s.parse().ok()).unwrap_or(50),
-            offset: cmd.param("begin_pos").and_then(|s| s.parse().ok()).unwrap_or(0),
+            limit: cmd
+                .param("lines")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(50),
+            offset: cmd
+                .param("begin_pos")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
             aktion_filter: cmd.param("filter").map(String::from),
         }),
 

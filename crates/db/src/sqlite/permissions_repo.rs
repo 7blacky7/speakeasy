@@ -4,9 +4,7 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::error::DbError;
-use crate::models::{
-    BerechtigungsWert, BerechtigungsZiel, EffektiveBerechtigung, TriState,
-};
+use crate::models::{BerechtigungsWert, BerechtigungsZiel, EffektiveBerechtigung, TriState};
 use crate::permissions::{berechtigungen_aufloesen, BerechtigungsEingabe};
 use crate::repository::{DbResult, PermissionRepository};
 use crate::sqlite::pool::SqliteDb;
@@ -132,10 +130,7 @@ impl PermissionRepository for SqliteDb {
     ) -> DbResult<Vec<EffektiveBerechtigung>> {
         // 1. Individuelle Berechtigungen des Users
         let individual = self
-            .get_permissions(
-                &BerechtigungsZiel::Benutzer(user_id),
-                Some(channel_id),
-            )
+            .get_permissions(&BerechtigungsZiel::Benutzer(user_id), Some(channel_id))
             .await?;
 
         // 2. Kanal-Gruppe des Users in diesem Kanal
@@ -155,11 +150,8 @@ impl PermissionRepository for SqliteDb {
                 let kg_id = Uuid::parse_str(&kg_id_str)
                     .map_err(|e| DbError::intern(format!("Ungueltige KanalGruppe UUID: {e}")))?;
                 Some(
-                    self.get_permissions(
-                        &BerechtigungsZiel::KanalGruppe(kg_id),
-                        Some(channel_id),
-                    )
-                    .await?,
+                    self.get_permissions(&BerechtigungsZiel::KanalGruppe(kg_id), Some(channel_id))
+                        .await?,
                 )
             } else {
                 None
@@ -214,9 +206,7 @@ impl PermissionRepository for SqliteDb {
     }
 }
 
-fn row_to_permission(
-    row: &sqlx::sqlite::SqliteRow,
-) -> DbResult<(String, BerechtigungsWert)> {
+fn row_to_permission(row: &sqlx::sqlite::SqliteRow) -> DbResult<(String, BerechtigungsWert)> {
     let key: String = row.try_get("permission_key")?;
     let value_type: String = row.try_get("value_type")?;
 
@@ -235,11 +225,7 @@ fn row_to_permission(
                 .map_err(|e| DbError::intern(format!("Ungueltige scope JSON: {e}")))?;
             BerechtigungsWert::Scope(scope)
         }
-        other => {
-            return Err(DbError::intern(format!(
-                "Unbekannter value_type: {other}"
-            )))
-        }
+        other => return Err(DbError::intern(format!("Unbekannter value_type: {other}"))),
     };
 
     Ok((key, wert))
@@ -247,16 +233,10 @@ fn row_to_permission(
 
 type WertSpalten = (&'static str, Option<i64>, Option<i64>, Option<String>);
 
-fn wert_zu_spalten(
-    wert: &BerechtigungsWert,
-) -> DbResult<WertSpalten> {
+fn wert_zu_spalten(wert: &BerechtigungsWert) -> DbResult<WertSpalten> {
     match wert {
-        BerechtigungsWert::TriState(ts) => {
-            Ok(("tri_state", ts.to_opt_int(), None, None))
-        }
-        BerechtigungsWert::IntLimit(limit) => {
-            Ok(("int_limit", None, Some(*limit), None))
-        }
+        BerechtigungsWert::TriState(ts) => Ok(("tri_state", ts.to_opt_int(), None, None)),
+        BerechtigungsWert::IntLimit(limit) => Ok(("int_limit", None, Some(*limit), None)),
         BerechtigungsWert::Scope(scope) => {
             let json = serde_json::to_string(scope)?;
             Ok(("scope", None, None, Some(json)))

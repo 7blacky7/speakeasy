@@ -5,8 +5,8 @@
 //! Antworten: ok [...] oder error id=N msg=...
 
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use anyhow::Result;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -151,9 +151,10 @@ async fn verbindung_behandeln(
 
         // Per-IP Rate Limit pro Befehl (nach dem Verbindungsaufbau)
         if let Err(retry_after) = rate_limiter.pruefe_ip(&ip) {
-            let antwort = fehler_antwort_tcp(3008, &format!(
-                "Rate-Limit ueberschritten, bitte in {retry_after}s erneut versuchen"
-            ));
+            let antwort = fehler_antwort_tcp(
+                3008,
+                &format!("Rate-Limit ueberschritten, bitte in {retry_after}s erneut versuchen"),
+            );
             let _ = writer.write_all(antwort.as_bytes()).await;
             break;
         }
@@ -215,7 +216,9 @@ async fn verarbeite_befehl(
     // Alle anderen Befehle erfordern Authentifizierung
     let cmd_session = match &session.commander_session {
         Some(s) => s.clone(),
-        None => return fehler_antwort_tcp(1001, "Nicht eingeloggt. Bitte zuerst 'login' aufrufen."),
+        None => {
+            return fehler_antwort_tcp(1001, "Nicht eingeloggt. Bitte zuerst 'login' aufrufen.")
+        }
     };
 
     // Befehl konvertieren
@@ -257,7 +260,13 @@ fn format_tcp_response(resp: crate::commands::types::Response) -> String {
             }
             let eintraege: Vec<String> = kanaele
                 .iter()
-                .map(|k| format!("cid={}\\sname={}", k.id, crate::tcp::parser::encode_value(&k.name)))
+                .map(|k| {
+                    format!(
+                        "cid={}\\sname={}",
+                        k.id,
+                        crate::tcp::parser::encode_value(&k.name)
+                    )
+                })
                 .collect();
             format!("ok {}\n", eintraege.join("|"))
         }
@@ -267,7 +276,13 @@ fn format_tcp_response(resp: crate::commands::types::Response) -> String {
             }
             let eintraege: Vec<String> = clients
                 .iter()
-                .map(|c| format!("clid={} clname={}", c.user_id, crate::tcp::parser::encode_value(&c.username)))
+                .map(|c| {
+                    format!(
+                        "clid={} clname={}",
+                        c.user_id,
+                        crate::tcp::parser::encode_value(&c.username)
+                    )
+                })
                 .collect();
             format!("ok {}\n", eintraege.join("|"))
         }

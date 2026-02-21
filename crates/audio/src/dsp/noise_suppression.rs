@@ -37,7 +37,6 @@ impl SuppressionLevel {
     }
 }
 
-
 /// Vereinfachter Rauschunterdruecker (spektrale Subtraktion im Zeitbereich)
 ///
 /// Da echte FFT-basierte spektrale Subtraktion viel Komplexitaet bedingt,

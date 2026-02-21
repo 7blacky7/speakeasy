@@ -23,7 +23,6 @@ pub struct ServerConfig {
     pub logging: LoggingEinstellungen,
 }
 
-
 /// Allgemeine Server-Einstellungen
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -166,24 +165,20 @@ impl ServerConfig {
                 );
                 Ok(Self::default())
             }
-            Err(e) => Err(anyhow::anyhow!("Konfigurationsdatei '{pfad}' nicht lesbar: {e}")),
+            Err(e) => Err(anyhow::anyhow!(
+                "Konfigurationsdatei '{pfad}' nicht lesbar: {e}"
+            )),
         }
     }
 
     /// Gibt die vollstaendige Bind-Adresse fuer TCP zurueck
     pub fn tcp_bind_adresse(&self) -> String {
-        format!(
-            "{}:{}",
-            self.netzwerk.bind_adresse, self.netzwerk.tcp_port
-        )
+        format!("{}:{}", self.netzwerk.bind_adresse, self.netzwerk.tcp_port)
     }
 
     /// Gibt die vollstaendige Bind-Adresse fuer UDP zurueck
     pub fn udp_bind_adresse(&self) -> String {
-        format!(
-            "{}:{}",
-            self.netzwerk.bind_adresse, self.netzwerk.udp_port
-        )
+        format!("{}:{}", self.netzwerk.bind_adresse, self.netzwerk.udp_port)
     }
 }
 

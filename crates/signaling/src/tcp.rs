@@ -9,7 +9,7 @@
 //! `tokio::task::LocalSet` auf einem single-threaded Executor.
 //! Dies ist korrekt fuer einen einzelnen Server-Prozess.
 
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -52,9 +52,7 @@ where
         shutdown_rx: tokio::sync::watch::Receiver<bool>,
     ) -> std::io::Result<()> {
         let local = LocalSet::new();
-        local
-            .run_until(self.accept_loop(shutdown_rx))
-            .await
+        local.run_until(self.accept_loop(shutdown_rx)).await
     }
 
     /// Interne Accept-Loop (laeuft innerhalb der LocalSet)

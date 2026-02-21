@@ -14,10 +14,10 @@
 //! - `speakeasy_http_request_duration_seconds` – Histogram: HTTP-Antwortzeit
 
 use anyhow::Result;
-use axum::{Router, routing::get, response::IntoResponse};
+use axum::{response::IntoResponse, routing::get, Router};
 use prometheus::{
-    Counter, Gauge, Histogram, HistogramOpts, HistogramVec, IntCounterVec,
-    Opts, Registry, TextEncoder, Encoder,
+    Counter, Encoder, Gauge, Histogram, HistogramOpts, HistogramVec, IntCounterVec, Opts, Registry,
+    TextEncoder,
 };
 use std::sync::Arc;
 
@@ -68,22 +68,25 @@ impl SpeakeasyMetrics {
         ))?;
         registry.register(Box::new(voice_packets_total.clone()))?;
 
-        let voice_packet_loss_ratio = Histogram::with_opts(HistogramOpts::new(
-            "speakeasy_voice_packet_loss_ratio",
-            "Paketverlust-Rate (0.0 bis 1.0)",
-        ).buckets(vec![0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0]))?;
+        let voice_packet_loss_ratio = Histogram::with_opts(
+            HistogramOpts::new(
+                "speakeasy_voice_packet_loss_ratio",
+                "Paketverlust-Rate (0.0 bis 1.0)",
+            )
+            .buckets(vec![0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0]),
+        )?;
         registry.register(Box::new(voice_packet_loss_ratio.clone()))?;
 
-        let voice_rtt_seconds = Histogram::with_opts(HistogramOpts::new(
-            "speakeasy_voice_rtt_seconds",
-            "Round-Trip-Time in Sekunden",
-        ).buckets(vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]))?;
+        let voice_rtt_seconds = Histogram::with_opts(
+            HistogramOpts::new("speakeasy_voice_rtt_seconds", "Round-Trip-Time in Sekunden")
+                .buckets(vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]),
+        )?;
         registry.register(Box::new(voice_rtt_seconds.clone()))?;
 
-        let voice_jitter_seconds = Histogram::with_opts(HistogramOpts::new(
-            "speakeasy_voice_jitter_seconds",
-            "Voice-Jitter in Sekunden",
-        ).buckets(vec![0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]))?;
+        let voice_jitter_seconds = Histogram::with_opts(
+            HistogramOpts::new("speakeasy_voice_jitter_seconds", "Voice-Jitter in Sekunden")
+                .buckets(vec![0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]),
+        )?;
         registry.register(Box::new(voice_jitter_seconds.clone()))?;
 
         let voice_bitrate_bps = Gauge::with_opts(Opts::new(
@@ -119,7 +122,10 @@ impl SpeakeasyMetrics {
             HistogramOpts::new(
                 "speakeasy_http_request_duration_seconds",
                 "HTTP-Antwortzeit in Sekunden",
-            ).buckets(vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]),
+            )
+            .buckets(vec![
+                0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5,
+            ]),
             &["method", "path"],
         )?;
         registry.register(Box::new(http_request_duration_seconds.clone()))?;
@@ -154,9 +160,8 @@ impl SpeakeasyMetrics {
 pub fn metrics_router() -> Router {
     use std::sync::OnceLock;
     static METRIKEN: OnceLock<SpeakeasyMetrics> = OnceLock::new();
-    let metriken = METRIKEN.get_or_init(|| {
-        SpeakeasyMetrics::neu().expect("Metriken-Initialisierung fehlgeschlagen")
-    });
+    let metriken = METRIKEN
+        .get_or_init(|| SpeakeasyMetrics::neu().expect("Metriken-Initialisierung fehlgeschlagen"));
 
     Router::new()
         .route("/metrics", get(metrics_handler))
@@ -169,9 +174,13 @@ async fn metrics_handler(
     match metriken.exportieren() {
         Ok(text) => (
             axum::http::StatusCode::OK,
-            [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/plain; version=0.0.4",
+            )],
             text,
-        ).into_response(),
+        )
+            .into_response(),
         Err(err) => {
             tracing::error!("Metriken-Export fehlgeschlagen: {err}");
             axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()

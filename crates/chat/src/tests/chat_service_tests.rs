@@ -2,35 +2,45 @@
 
 use std::sync::Arc;
 
-use speakeasy_db::SqliteDb;
-use speakeasy_db::ChannelRepository;
-use speakeasy_db::UserRepository;
-use speakeasy_db::models::{NeuerBenutzer, NeuerKanal, KanalTyp};
-use uuid::Uuid;
 #[allow(unused_imports)]
 use chrono;
+use speakeasy_db::models::{KanalTyp, NeuerBenutzer, NeuerKanal};
+use speakeasy_db::ChannelRepository;
+use speakeasy_db::SqliteDb;
+use speakeasy_db::UserRepository;
+use uuid::Uuid;
 
-use crate::{
-    service::ChatService,
-    types::HistoryAnfrage,
-    error::ChatError,
-};
+use crate::{error::ChatError, service::ChatService, types::HistoryAnfrage};
 
 async fn test_db() -> Arc<SqliteDb> {
-    Arc::new(SqliteDb::in_memory().await.expect("In-Memory-DB konnte nicht geoeffnet werden"))
+    Arc::new(
+        SqliteDb::in_memory()
+            .await
+            .expect("In-Memory-DB konnte nicht geoeffnet werden"),
+    )
 }
 
 async fn setup_kanal_und_user(db: &Arc<SqliteDb>) -> (Uuid, Uuid) {
-    let user = UserRepository::create(db.as_ref(), NeuerBenutzer {
-        username: "testuser",
-        password_hash: "hash",
-    }).await.expect("User anlegen fehlgeschlagen");
+    let user = UserRepository::create(
+        db.as_ref(),
+        NeuerBenutzer {
+            username: "testuser",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .expect("User anlegen fehlgeschlagen");
 
-    let kanal = ChannelRepository::create(db.as_ref(), NeuerKanal {
-        name: "testkanal",
-        channel_type: KanalTyp::Text,
-        ..Default::default()
-    }).await.expect("Kanal anlegen fehlgeschlagen");
+    let kanal = ChannelRepository::create(
+        db.as_ref(),
+        NeuerKanal {
+            name: "testkanal",
+            channel_type: KanalTyp::Text,
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("Kanal anlegen fehlgeschlagen");
 
     (kanal.id, user.id)
 }
@@ -130,10 +140,15 @@ async fn test_fremde_nachricht_nicht_editierbar() {
         .await
         .expect("Nachricht senden fehlgeschlagen");
 
-    let anderer_user = UserRepository::create(db.as_ref(), NeuerBenutzer {
-        username: "anderer_user",
-        password_hash: "hash2",
-    }).await.expect("User anlegen fehlgeschlagen");
+    let anderer_user = UserRepository::create(
+        db.as_ref(),
+        NeuerBenutzer {
+            username: "anderer_user",
+            password_hash: "hash2",
+        },
+    )
+    .await
+    .expect("User anlegen fehlgeschlagen");
 
     let result = service
         .nachricht_editieren(nachricht.id, anderer_user.id, "Nicht erlaubt")
@@ -170,10 +185,15 @@ async fn test_fremde_nachricht_nicht_loeschbar() {
         .await
         .expect("Nachricht senden fehlgeschlagen");
 
-    let anderer_user = UserRepository::create(db.as_ref(), NeuerBenutzer {
-        username: "fremder_user",
-        password_hash: "hash3",
-    }).await.expect("User anlegen fehlgeschlagen");
+    let anderer_user = UserRepository::create(
+        db.as_ref(),
+        NeuerBenutzer {
+            username: "fremder_user",
+            password_hash: "hash3",
+        },
+    )
+    .await
+    .expect("User anlegen fehlgeschlagen");
 
     let result = service
         .nachricht_loeschen(nachricht.id, anderer_user.id)
@@ -278,9 +298,18 @@ async fn test_nachrichten_suchen() {
     let (channel_id, sender_id) = setup_kanal_und_user(&db).await;
     let service = ChatService::neu(db);
 
-    service.nachricht_senden(channel_id, sender_id, "Guten Morgen!", None).await.unwrap();
-    service.nachricht_senden(channel_id, sender_id, "Guten Abend!", None).await.unwrap();
-    service.nachricht_senden(channel_id, sender_id, "Tschuess!", None).await.unwrap();
+    service
+        .nachricht_senden(channel_id, sender_id, "Guten Morgen!", None)
+        .await
+        .unwrap();
+    service
+        .nachricht_senden(channel_id, sender_id, "Guten Abend!", None)
+        .await
+        .unwrap();
+    service
+        .nachricht_senden(channel_id, sender_id, "Tschuess!", None)
+        .await
+        .unwrap();
 
     let ergebnisse = service
         .nachrichten_suchen(channel_id, "Guten")
@@ -306,13 +335,23 @@ async fn test_geloeschte_nachrichten_nicht_in_history() {
     let (channel_id, sender_id) = setup_kanal_und_user(&db).await;
     let service = ChatService::neu(db);
 
-    let n1 = service.nachricht_senden(channel_id, sender_id, "Bleibt", None).await.unwrap();
-    let n2 = service.nachricht_senden(channel_id, sender_id, "Wird geloescht", None).await.unwrap();
+    let n1 = service
+        .nachricht_senden(channel_id, sender_id, "Bleibt", None)
+        .await
+        .unwrap();
+    let n2 = service
+        .nachricht_senden(channel_id, sender_id, "Wird geloescht", None)
+        .await
+        .unwrap();
 
     service.nachricht_loeschen(n2.id, sender_id).await.unwrap();
 
     let history = service
-        .history_laden(HistoryAnfrage { channel_id, before: None, limit: None })
+        .history_laden(HistoryAnfrage {
+            channel_id,
+            before: None,
+            limit: None,
+        })
         .await
         .unwrap();
 

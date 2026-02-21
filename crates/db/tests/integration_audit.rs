@@ -6,7 +6,9 @@ use speakeasy_db::{
 };
 
 async fn db() -> SqliteDb {
-    SqliteDb::in_memory().await.expect("In-Memory DB konnte nicht erstellt werden")
+    SqliteDb::in_memory()
+        .await
+        .expect("In-Memory DB konnte nicht erstellt werden")
 }
 
 #[tokio::test]
@@ -33,9 +35,15 @@ async fn audit_ereignis_protokollieren() {
 async fn audit_mit_actor() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "admin", password_hash: "hash" })
-        .await
-        .unwrap();
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "admin",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap();
 
     let eintrag = AuditLogRepository::log_event(
         &db,
@@ -70,7 +78,9 @@ async fn audit_ereignisse_auflisten() {
         .unwrap();
     }
 
-    let alle = AuditLogRepository::list_events(&db, AuditLogFilter::default()).await.unwrap();
+    let alle = AuditLogRepository::list_events(&db, AuditLogFilter::default())
+        .await
+        .unwrap();
     assert!(alle.len() >= 5);
 }
 
@@ -78,9 +88,36 @@ async fn audit_ereignisse_auflisten() {
 async fn audit_filter_nach_action() {
     let db = db().await;
 
-    AuditLogRepository::log_event(&db, None, "user.create", None, None, serde_json::Value::Null).await.unwrap();
-    AuditLogRepository::log_event(&db, None, "user.delete", None, None, serde_json::Value::Null).await.unwrap();
-    AuditLogRepository::log_event(&db, None, "user.create", None, None, serde_json::Value::Null).await.unwrap();
+    AuditLogRepository::log_event(
+        &db,
+        None,
+        "user.create",
+        None,
+        None,
+        serde_json::Value::Null,
+    )
+    .await
+    .unwrap();
+    AuditLogRepository::log_event(
+        &db,
+        None,
+        "user.delete",
+        None,
+        None,
+        serde_json::Value::Null,
+    )
+    .await
+    .unwrap();
+    AuditLogRepository::log_event(
+        &db,
+        None,
+        "user.create",
+        None,
+        None,
+        serde_json::Value::Null,
+    )
+    .await
+    .unwrap();
 
     let filter = AuditLogFilter {
         action: Some("user.create".into()),
@@ -96,13 +133,39 @@ async fn audit_filter_nach_action() {
 async fn audit_filter_nach_actor() {
     let db = db().await;
 
-    let user = UserRepository::create(&db, NeuerBenutzer { username: "logger", password_hash: "hash" })
+    let user = UserRepository::create(
+        &db,
+        NeuerBenutzer {
+            username: "logger",
+            password_hash: "hash",
+        },
+    )
+    .await
+    .unwrap();
+
+    AuditLogRepository::log_event(
+        &db,
+        Some(user.id),
+        "action.a",
+        None,
+        None,
+        serde_json::Value::Null,
+    )
+    .await
+    .unwrap();
+    AuditLogRepository::log_event(&db, None, "action.b", None, None, serde_json::Value::Null)
         .await
         .unwrap();
-
-    AuditLogRepository::log_event(&db, Some(user.id), "action.a", None, None, serde_json::Value::Null).await.unwrap();
-    AuditLogRepository::log_event(&db, None, "action.b", None, None, serde_json::Value::Null).await.unwrap();
-    AuditLogRepository::log_event(&db, Some(user.id), "action.c", None, None, serde_json::Value::Null).await.unwrap();
+    AuditLogRepository::log_event(
+        &db,
+        Some(user.id),
+        "action.c",
+        None,
+        None,
+        serde_json::Value::Null,
+    )
+    .await
+    .unwrap();
 
     let filter = AuditLogFilter {
         actor_id: Some(user.id),
@@ -131,22 +194,28 @@ async fn audit_limit_und_offset() {
         .unwrap();
     }
 
-    let seite1 = AuditLogRepository::list_events(&db, AuditLogFilter {
-        action: Some("paginate.test".into()),
-        limit: Some(3),
-        offset: Some(0),
-        ..Default::default()
-    })
+    let seite1 = AuditLogRepository::list_events(
+        &db,
+        AuditLogFilter {
+            action: Some("paginate.test".into()),
+            limit: Some(3),
+            offset: Some(0),
+            ..Default::default()
+        },
+    )
     .await
     .unwrap();
     assert_eq!(seite1.len(), 3);
 
-    let seite2 = AuditLogRepository::list_events(&db, AuditLogFilter {
-        action: Some("paginate.test".into()),
-        limit: Some(3),
-        offset: Some(3),
-        ..Default::default()
-    })
+    let seite2 = AuditLogRepository::list_events(
+        &db,
+        AuditLogFilter {
+            action: Some("paginate.test".into()),
+            limit: Some(3),
+            offset: Some(3),
+            ..Default::default()
+        },
+    )
     .await
     .unwrap();
     assert_eq!(seite2.len(), 3);
@@ -166,10 +235,13 @@ async fn audit_ereignisse_zaehlen() {
             .unwrap();
     }
 
-    let anzahl = AuditLogRepository::count_events(&db, AuditLogFilter {
-        action: Some("count.test".into()),
-        ..Default::default()
-    })
+    let anzahl = AuditLogRepository::count_events(
+        &db,
+        AuditLogFilter {
+            action: Some("count.test".into()),
+            ..Default::default()
+        },
+    )
     .await
     .unwrap();
 

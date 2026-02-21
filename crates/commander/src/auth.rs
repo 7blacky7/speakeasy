@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use speakeasy_auth::{AuthService, session::Session};
+use speakeasy_auth::{session::Session, AuthService};
 use speakeasy_db::{models::BenutzerRecord, repository::UserRepository};
 
 use crate::error::{CommanderError, CommanderResult};
@@ -37,9 +37,7 @@ impl CommanderSession {
             // Session-Auth hat alle Rechte (wie Admin-Login)
             AuthArt::Session => true,
             // API-Token: Scope muss explizit vorhanden sein
-            AuthArt::ApiToken => {
-                self.scopes.iter().any(|s| s == scope || s == "admin:*")
-            }
+            AuthArt::ApiToken => self.scopes.iter().any(|s| s == scope || s == "admin:*"),
         }
     }
 }
@@ -60,12 +58,15 @@ impl<U: UserRepository> CommanderAuth<U> {
     /// Validiert einen Bearer-Token (Session oder API-Token)
     ///
     /// Erwartet Format: "Bearer <token>"
-    pub async fn bearer_validieren(&self, authorization: &str) -> CommanderResult<CommanderSession> {
-        let token = authorization
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| CommanderError::Authentifizierung(
-                "Ungueltiges Authorization-Format (erwartet: Bearer <token>)".into()
-            ))?;
+    pub async fn bearer_validieren(
+        &self,
+        authorization: &str,
+    ) -> CommanderResult<CommanderSession> {
+        let token = authorization.strip_prefix("Bearer ").ok_or_else(|| {
+            CommanderError::Authentifizierung(
+                "Ungueltiges Authorization-Format (erwartet: Bearer <token>)".into(),
+            )
+        })?;
 
         self.token_validieren(token).await
     }
@@ -89,7 +90,7 @@ impl<U: UserRepository> CommanderAuth<U> {
                 auth_art: AuthArt::ApiToken,
             }),
             Err(_) => Err(CommanderError::Authentifizierung(
-                "Ungueltiger oder abgelaufener Token".into()
+                "Ungueltiger oder abgelaufener Token".into(),
             )),
         }
     }
@@ -103,20 +104,22 @@ impl<U: UserRepository> CommanderAuth<U> {
         self.auth_service
             .anmelden(username, passwort)
             .await
-            .map_err(|_| CommanderError::Authentifizierung(
-                "Ungueltige Anmeldedaten".into()
-            ))
+            .map_err(|_| CommanderError::Authentifizierung("Ungueltige Anmeldedaten".into()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
     use chrono::Utc;
-    use uuid::Uuid;
     use speakeasy_auth::{ApiTokenStore, SessionStore};
-    use speakeasy_db::{DbError, models::{BenutzerRecord, BenutzerUpdate, NeuerBenutzer}, repository::UserRepository};
+    use speakeasy_db::{
+        models::{BenutzerRecord, BenutzerUpdate, NeuerBenutzer},
+        repository::UserRepository,
+        DbError,
+    };
+    use std::sync::Mutex;
+    use uuid::Uuid;
 
     #[derive(Default)]
     struct TestUserRepo {
@@ -137,20 +140,51 @@ mod tests {
             Ok(record)
         }
         async fn get_by_id(&self, id: Uuid) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter().find(|u| u.id == id).cloned())
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.id == id)
+                .cloned())
         }
-        async fn get_by_name(&self, username: &str) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
-            Ok(self.benutzer.lock().unwrap().iter().find(|u| u.username == username).cloned())
+        async fn get_by_name(
+            &self,
+            username: &str,
+        ) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
+            Ok(self
+                .benutzer
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.username == username)
+                .cloned())
         }
-        async fn update(&self, id: Uuid, _data: BenutzerUpdate) -> speakeasy_db::DbResult<BenutzerRecord> {
-            self.get_by_id(id).await?.ok_or_else(|| DbError::nicht_gefunden(id.to_string()))
+        async fn update(
+            &self,
+            id: Uuid,
+            _data: BenutzerUpdate,
+        ) -> speakeasy_db::DbResult<BenutzerRecord> {
+            self.get_by_id(id)
+                .await?
+                .ok_or_else(|| DbError::nicht_gefunden(id.to_string()))
         }
-        async fn delete(&self, _id: Uuid) -> speakeasy_db::DbResult<bool> { Ok(false) }
+        async fn delete(&self, _id: Uuid) -> speakeasy_db::DbResult<bool> {
+            Ok(false)
+        }
         async fn list(&self, _nur_aktive: bool) -> speakeasy_db::DbResult<Vec<BenutzerRecord>> {
             Ok(self.benutzer.lock().unwrap().clone())
         }
-        async fn authenticate(&self, _u: &str, _p: &str) -> speakeasy_db::DbResult<Option<BenutzerRecord>> { Ok(None) }
-        async fn update_last_login(&self, _id: Uuid) -> speakeasy_db::DbResult<()> { Ok(()) }
+        async fn authenticate(
+            &self,
+            _u: &str,
+            _p: &str,
+        ) -> speakeasy_db::DbResult<Option<BenutzerRecord>> {
+            Ok(None)
+        }
+        async fn update_last_login(&self, _id: Uuid) -> speakeasy_db::DbResult<()> {
+            Ok(())
+        }
     }
 
     fn test_auth() -> CommanderAuth<TestUserRepo> {
@@ -165,14 +199,20 @@ mod tests {
     async fn bearer_format_wird_geparst() {
         let auth = test_auth();
         let ergebnis = auth.bearer_validieren("kein_bearer_format").await;
-        assert!(matches!(ergebnis, Err(CommanderError::Authentifizierung(_))));
+        assert!(matches!(
+            ergebnis,
+            Err(CommanderError::Authentifizierung(_))
+        ));
     }
 
     #[tokio::test]
     async fn ungueltiger_token_abgelehnt() {
         let auth = test_auth();
         let ergebnis = auth.token_validieren("ungueltiger_token_xyz").await;
-        assert!(matches!(ergebnis, Err(CommanderError::Authentifizierung(_))));
+        assert!(matches!(
+            ergebnis,
+            Err(CommanderError::Authentifizierung(_))
+        ));
     }
 
     #[test]

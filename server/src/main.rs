@@ -3,13 +3,12 @@
 //! Laedt die Konfiguration, initialisiert das Logging und startet den Server.
 
 use anyhow::Result;
-use speakeasy_server::{Server, config::ServerConfig};
+use speakeasy_server::{config::ServerConfig, Server};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Konfigurationsdatei-Pfad aus Umgebungsvariable oder Standard
-    let config_pfad = std::env::var("SPEAKEASY_CONFIG")
-        .unwrap_or_else(|_| "config.toml".into());
+    let config_pfad = std::env::var("SPEAKEASY_CONFIG").unwrap_or_else(|_| "config.toml".into());
 
     // Konfiguration laden (Standardwerte falls Datei fehlt)
     let config = ServerConfig::laden(&config_pfad)?;
@@ -32,10 +31,9 @@ async fn main() -> Result<()> {
 
 /// Initialisiert tracing-subscriber mit dem konfigurierten Level und Format
 fn logging_initialisieren(level: &str, format: &str) {
-    use tracing_subscriber::{EnvFilter, fmt};
+    use tracing_subscriber::{fmt, EnvFilter};
 
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(level));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
     match format {
         "json" => {
@@ -47,10 +45,7 @@ fn logging_initialisieren(level: &str, format: &str) {
                 .init();
         }
         _ => {
-            fmt()
-                .with_env_filter(filter)
-                .with_target(true)
-                .init();
+            fmt().with_env_filter(filter).with_target(true).init();
         }
     }
 }

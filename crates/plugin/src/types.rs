@@ -100,7 +100,11 @@ pub struct Plugin {
 
 impl Plugin {
     pub fn new(info: PluginInfo, wasm_pfad: std::path::PathBuf, wasm_bytes: Vec<u8>) -> Self {
-        Self { info, wasm_pfad, wasm_bytes }
+        Self {
+            info,
+            wasm_pfad,
+            wasm_bytes,
+        }
     }
 }
 
@@ -132,7 +136,10 @@ mod tests {
     #[test]
     fn trust_level_anzeige() {
         assert_eq!(TrustLevel::NichtSigniert.to_string(), "Nicht signiert");
-        assert_eq!(TrustLevel::Vertrauenswuerdig.to_string(), "Vertrauenswuerdig");
+        assert_eq!(
+            TrustLevel::Vertrauenswuerdig.to_string(),
+            "Vertrauenswuerdig"
+        );
     }
 
     #[test]

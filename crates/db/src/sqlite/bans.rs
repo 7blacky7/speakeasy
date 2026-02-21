@@ -144,10 +144,7 @@ fn row_to_ban(row: &sqlx::sqlite::SqliteRow) -> DbResult<BanRecord> {
     })
 }
 
-pub(crate) fn parse_opt_uuid(
-    row: &sqlx::sqlite::SqliteRow,
-    col: &str,
-) -> DbResult<Option<Uuid>> {
+pub(crate) fn parse_opt_uuid(row: &sqlx::sqlite::SqliteRow, col: &str) -> DbResult<Option<Uuid>> {
     let s: Option<String> = row.try_get(col)?;
     s.as_deref()
         .map(|v| {

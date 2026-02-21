@@ -40,9 +40,7 @@ impl SqliteDb {
 
     /// Fuehrt alle ausstehenden Migrationen aus
     pub async fn migrationen_ausfuehren(&self) -> Result<(), DbError> {
-        sqlx::migrate!("./migrations")
-            .run(&self.pool)
-            .await?;
+        sqlx::migrate!("./migrations").run(&self.pool).await?;
         info!("Datenbank-Migrationen abgeschlossen");
         Ok(())
     }
@@ -54,8 +52,7 @@ impl SqliteDb {
 
     /// Erstellt eine In-Memory-Datenbank fuer Tests
     pub async fn in_memory() -> Result<Self, DbError> {
-        let opts = SqliteConnectOptions::from_str("sqlite::memory:")?
-            .foreign_keys(true);
+        let opts = SqliteConnectOptions::from_str("sqlite::memory:")?.foreign_keys(true);
 
         let pool = SqlitePoolOptions::new()
             .max_connections(1)

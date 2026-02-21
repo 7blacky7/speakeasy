@@ -21,9 +21,9 @@ pub use identity::{Identity, PublicIdentity};
 pub use types::{EncryptedPayload, GroupKey, GroupKeyAlgorithm, Nonce, PublicKey, SecretBytes};
 
 pub use e2e::{
-    decrypt_audio, decrypt_audio_bytes, encrypt_audio, hkdf_derive, wrap_key_for_recipient,
-    unwrap_key_for_recipient, create_group_key, rotate_group_key,
-    GroupKeyManager, KeyExchangeClient, KeyExchangeServer, SharedSecret,
+    create_group_key, decrypt_audio, decrypt_audio_bytes, encrypt_audio, hkdf_derive,
+    rotate_group_key, unwrap_key_for_recipient, wrap_key_for_recipient, GroupKeyManager,
+    KeyExchangeClient, KeyExchangeServer, SharedSecret,
 };
 
 pub use dtls::{

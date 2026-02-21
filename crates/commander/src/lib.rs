@@ -16,6 +16,6 @@ pub mod rate_limit;
 pub mod rest;
 pub mod tcp;
 
-pub use error::{CommanderError, CommanderResult};
 pub use commands::executor::CommandExecutor;
-pub use rate_limit::{RateLimiter, RateLimitKonfig};
+pub use error::{CommanderError, CommanderResult};
+pub use rate_limit::{RateLimitKonfig, RateLimiter};

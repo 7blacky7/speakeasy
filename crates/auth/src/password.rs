@@ -65,7 +65,10 @@ mod tests {
         let hash = passwort_hashen(passwort).expect("Hashing fehlgeschlagen");
 
         assert!(!hash.is_empty());
-        assert!(hash.starts_with("$argon2id$"), "Hash muss mit $argon2id$ beginnen");
+        assert!(
+            hash.starts_with("$argon2id$"),
+            "Hash muss mit $argon2id$ beginnen"
+        );
 
         let korrekt = passwort_verifizieren(passwort, &hash).expect("Verifikation fehlgeschlagen");
         assert!(korrekt, "Passwort muss korrekt verifiziert werden");
@@ -76,8 +79,8 @@ mod tests {
         let passwort = "richtiges_passwort";
         let hash = passwort_hashen(passwort).expect("Hashing fehlgeschlagen");
 
-        let korrekt = passwort_verifizieren("falsches_passwort", &hash)
-            .expect("Verifikation fehlgeschlagen");
+        let korrekt =
+            passwort_verifizieren("falsches_passwort", &hash).expect("Verifikation fehlgeschlagen");
         assert!(!korrekt, "Falsches Passwort muss abgelehnt werden");
     }
 
@@ -87,12 +90,18 @@ mod tests {
         let hash1 = passwort_hashen(passwort).expect("Hashing 1 fehlgeschlagen");
         let hash2 = passwort_hashen(passwort).expect("Hashing 2 fehlgeschlagen");
 
-        assert_ne!(hash1, hash2, "Gleiche Passwoerter muessen verschiedene Hashes erzeugen (Salt)");
+        assert_ne!(
+            hash1, hash2,
+            "Gleiche Passwoerter muessen verschiedene Hashes erzeugen (Salt)"
+        );
     }
 
     #[test]
     fn ungueltige_hash_format_gibt_fehler() {
         let ergebnis = passwort_verifizieren("passwort", "kein_gueltiger_hash");
-        assert!(ergebnis.is_err(), "Ungueltig formatierter Hash muss Fehler zurueckgeben");
+        assert!(
+            ergebnis.is_err(),
+            "Ungueltig formatierter Hash muss Fehler zurueckgeben"
+        );
     }
 }

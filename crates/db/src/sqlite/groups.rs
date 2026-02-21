@@ -84,13 +84,11 @@ impl ServerGroupRepository for SqliteDb {
     }
 
     async fn add_member(&self, group_id: Uuid, user_id: Uuid) -> DbResult<()> {
-        sqlx::query(
-            "INSERT OR IGNORE INTO user_server_groups (user_id, group_id) VALUES (?, ?)",
-        )
-        .bind(user_id.to_string())
-        .bind(group_id.to_string())
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("INSERT OR IGNORE INTO user_server_groups (user_id, group_id) VALUES (?, ?)")
+            .bind(user_id.to_string())
+            .bind(group_id.to_string())
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -155,21 +153,22 @@ impl ChannelGroupRepository for SqliteDb {
         let id = Uuid::new_v4();
         let id_str = id.to_string();
 
-        sqlx::query(
-            "INSERT INTO channel_groups (id, name, permissions) VALUES (?, ?, '{}')",
-        )
-        .bind(&id_str)
-        .bind(data.name)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| {
-            let msg = e.to_string();
-            if msg.contains("UNIQUE") || msg.contains("unique") {
-                DbError::Eindeutigkeit(format!("Kanal-Gruppe '{}' existiert bereits", data.name))
-            } else {
-                DbError::Sqlx(e)
-            }
-        })?;
+        sqlx::query("INSERT INTO channel_groups (id, name, permissions) VALUES (?, ?, '{}')")
+            .bind(&id_str)
+            .bind(data.name)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                let msg = e.to_string();
+                if msg.contains("UNIQUE") || msg.contains("unique") {
+                    DbError::Eindeutigkeit(format!(
+                        "Kanal-Gruppe '{}' existiert bereits",
+                        data.name
+                    ))
+                } else {
+                    DbError::Sqlx(e)
+                }
+            })?;
 
         Ok(KanalGruppeRecord {
             id,
@@ -179,22 +178,18 @@ impl ChannelGroupRepository for SqliteDb {
     }
 
     async fn get(&self, id: Uuid) -> DbResult<Option<KanalGruppeRecord>> {
-        let row = sqlx::query(
-            "SELECT id, name, permissions FROM channel_groups WHERE id = ?",
-        )
-        .bind(id.to_string())
-        .fetch_optional(&self.pool)
-        .await?;
+        let row = sqlx::query("SELECT id, name, permissions FROM channel_groups WHERE id = ?")
+            .bind(id.to_string())
+            .fetch_optional(&self.pool)
+            .await?;
 
         row.map(|r| row_to_kanal_gruppe(&r)).transpose()
     }
 
     async fn list(&self) -> DbResult<Vec<KanalGruppeRecord>> {
-        let rows = sqlx::query(
-            "SELECT id, name, permissions FROM channel_groups ORDER BY name",
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let rows = sqlx::query("SELECT id, name, permissions FROM channel_groups ORDER BY name")
+            .fetch_all(&self.pool)
+            .await?;
 
         rows.iter().map(row_to_kanal_gruppe).collect()
     }
@@ -238,14 +233,13 @@ impl ChannelGroupRepository for SqliteDb {
     }
 
     async fn remove_member_group(&self, user_id: Uuid, channel_id: Uuid) -> DbResult<bool> {
-        let affected = sqlx::query(
-            "DELETE FROM user_channel_groups WHERE user_id = ? AND channel_id = ?",
-        )
-        .bind(user_id.to_string())
-        .bind(channel_id.to_string())
-        .execute(&self.pool)
-        .await?
-        .rows_affected();
+        let affected =
+            sqlx::query("DELETE FROM user_channel_groups WHERE user_id = ? AND channel_id = ?")
+                .bind(user_id.to_string())
+                .bind(channel_id.to_string())
+                .execute(&self.pool)
+                .await?
+                .rows_affected();
         Ok(affected > 0)
     }
 

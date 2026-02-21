@@ -16,7 +16,8 @@
 //! - Client muss innerhalb von `verbindungs_timeout_sek` antworten
 //! - Bei Timeout wird die Verbindung getrennt
 
-use speakeasy_db::{BanRepository, PermissionRepository, repository::UserRepository};
+use futures_util::{SinkExt, StreamExt};
+use speakeasy_db::{repository::UserRepository, BanRepository, PermissionRepository};
 use speakeasy_protocol::{
     control::{ControlMessage, ErrorCode},
     wire::FrameCodec,
@@ -27,7 +28,6 @@ use std::time::{Duration, Instant};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_util::codec::Framed;
-use futures_util::{SinkExt, StreamExt};
 
 use crate::dispatcher::{DispatcherContext, MessageDispatcher};
 use crate::server_state::SignalingState;
@@ -90,10 +90,8 @@ where
         mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
     ) {
         let peer_addr = self.peer_addr;
-        let keepalive_intervall =
-            Duration::from_secs(self.state.config.keepalive_sek);
-        let timeout_dauer =
-            Duration::from_secs(self.state.config.verbindungs_timeout_sek);
+        let keepalive_intervall = Duration::from_secs(self.state.config.keepalive_sek);
+        let timeout_dauer = Duration::from_secs(self.state.config.verbindungs_timeout_sek);
 
         tracing::info!(peer = %peer_addr, "Neue Verbindung");
 

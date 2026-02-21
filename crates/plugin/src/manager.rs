@@ -74,9 +74,7 @@ impl PluginManager {
         let trust_level = trust_level_bestimmen(&wasm_bytes, signatur.as_deref(), &[]);
 
         // Signierungspflicht pruefen
-        if self.konfiguration.signierung_erforderlich
-            && trust_level == TrustLevel::NichtSigniert
-        {
+        if self.konfiguration.signierung_erforderlich && trust_level == TrustLevel::NichtSigniert {
             return Err(PluginError::NichtSigniert);
         }
 
@@ -114,16 +112,26 @@ impl PluginManager {
 
         self.plugins.insert(
             id,
-            GeladenPlugin { plugin, manifest, sandbox },
+            GeladenPlugin {
+                plugin,
+                manifest,
+                sandbox,
+            },
         );
 
-        info!("Plugin '{}' geladen (ID: {})", self.plugins.get(&id).unwrap().plugin.info.name, id);
+        info!(
+            "Plugin '{}' geladen (ID: {})",
+            self.plugins.get(&id).unwrap().plugin.info.name,
+            id
+        );
         Ok(id)
     }
 
     /// Entlaedt ein Plugin vollstaendig
     pub fn plugin_entladen(&self, id: PluginId) -> Result<()> {
-        let (_, geladen) = self.plugins.remove(&id)
+        let (_, geladen) = self
+            .plugins
+            .remove(&id)
             .ok_or_else(|| PluginError::NichtGefunden(id.to_string()))?;
         self.registry.entfernen(id)?;
         info!("Plugin '{}' entladen", geladen.plugin.info.name);
@@ -133,7 +141,9 @@ impl PluginManager {
     /// Aktiviert ein geladenes Plugin
     pub fn plugin_aktivieren(&self, id: PluginId) -> Result<()> {
         self.registry.zustand_setzen(id, PluginState::Aktiv)?;
-        let mut geladen = self.plugins.get_mut(&id)
+        let mut geladen = self
+            .plugins
+            .get_mut(&id)
             .ok_or_else(|| PluginError::NichtGefunden(id.to_string()))?;
         geladen.plugin.info.state = PluginState::Aktiv;
         info!("Plugin '{}' aktiviert", geladen.plugin.info.name);
@@ -143,7 +153,9 @@ impl PluginManager {
     /// Deaktiviert ein aktives Plugin
     pub fn plugin_deaktivieren(&self, id: PluginId) -> Result<()> {
         self.registry.zustand_setzen(id, PluginState::Deaktiviert)?;
-        let mut geladen = self.plugins.get_mut(&id)
+        let mut geladen = self
+            .plugins
+            .get_mut(&id)
             .ok_or_else(|| PluginError::NichtGefunden(id.to_string()))?;
         geladen.plugin.info.state = PluginState::Deaktiviert;
         info!("Plugin '{}' deaktiviert", geladen.plugin.info.name);
@@ -161,7 +173,13 @@ impl PluginManager {
                 continue;
             }
             // Pruefen ob Plugin dieses Event abonniert hat
-            if !geladen.manifest.events.subscribe.iter().any(|e| e == event_name) {
+            if !geladen
+                .manifest
+                .events
+                .subscribe
+                .iter()
+                .any(|e| e == event_name)
+            {
                 continue;
             }
             // In echter Implementierung: WASM-Funktion aufrufen
@@ -169,7 +187,11 @@ impl PluginManager {
         }
 
         if empfaenger > 0 {
-            tracing::debug!("Event '{}' an {} Plugin(s) gesendet", event_name, empfaenger);
+            tracing::debug!(
+                "Event '{}' an {} Plugin(s) gesendet",
+                event_name,
+                empfaenger
+            );
         }
         Ok(())
     }
@@ -274,11 +296,7 @@ after_user_join = true
     #[test]
     fn plugin_laden_und_auflisten() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "list-test",
-            "[capabilities]\nchat_read = true",
-        );
+        let pfad = erstelle_test_plugin(&dir, "list-test", "[capabilities]\nchat_read = true");
 
         let manager = PluginManager::neu(ManagerKonfiguration::default());
         let id = manager.plugin_laden(&pfad).unwrap();
@@ -291,11 +309,7 @@ after_user_join = true
     #[test]
     fn plugin_aktivieren_und_deaktivieren() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "lifecycle-test",
-            "[capabilities]",
-        );
+        let pfad = erstelle_test_plugin(&dir, "lifecycle-test", "[capabilities]");
 
         let manager = PluginManager::neu(ManagerKonfiguration::default());
         let id = manager.plugin_laden(&pfad).unwrap();
@@ -304,17 +318,16 @@ after_user_join = true
         assert_eq!(manager.plugin_info(id).unwrap().state, PluginState::Aktiv);
 
         manager.plugin_deaktivieren(id).unwrap();
-        assert_eq!(manager.plugin_info(id).unwrap().state, PluginState::Deaktiviert);
+        assert_eq!(
+            manager.plugin_info(id).unwrap().state,
+            PluginState::Deaktiviert
+        );
     }
 
     #[test]
     fn plugin_entladen() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "unload-test",
-            "[capabilities]",
-        );
+        let pfad = erstelle_test_plugin(&dir, "unload-test", "[capabilities]");
 
         let manager = PluginManager::neu(ManagerKonfiguration::default());
         let id = manager.plugin_laden(&pfad).unwrap();
@@ -334,11 +347,7 @@ after_user_join = true
     #[test]
     fn event_senden_an_aktive_plugins() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "event-test",
-            "[capabilities]\nchat_read = true",
-        );
+        let pfad = erstelle_test_plugin(&dir, "event-test", "[capabilities]\nchat_read = true");
 
         let manager = PluginManager::neu(ManagerKonfiguration::default());
         let id = manager.plugin_laden(&pfad).unwrap();
@@ -355,28 +364,22 @@ after_user_join = true
     #[test]
     fn hook_ausfuehren_allow() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "hook-test",
-            "[capabilities]\nchat_write = true",
-        );
+        let pfad = erstelle_test_plugin(&dir, "hook-test", "[capabilities]\nchat_write = true");
 
         let manager = PluginManager::neu(ManagerKonfiguration::default());
         let id = manager.plugin_laden(&pfad).unwrap();
         manager.plugin_aktivieren(id).unwrap();
 
-        let result = manager.hook_ausfuehren("before_chat_send", b"Hallo").unwrap();
+        let result = manager
+            .hook_ausfuehren("before_chat_send", b"Hallo")
+            .unwrap();
         assert!(result.ist_erlaubt());
     }
 
     #[test]
     fn signierung_erforderlich_abgelehnt() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "unsigned-test",
-            "[capabilities]",
-        );
+        let pfad = erstelle_test_plugin(&dir, "unsigned-test", "[capabilities]");
 
         let config = ManagerKonfiguration {
             signierung_erforderlich: true,
@@ -390,11 +393,7 @@ after_user_join = true
     #[test]
     fn capability_pruefen() {
         let dir = TempDir::new().unwrap();
-        let pfad = erstelle_test_plugin(
-            &dir,
-            "cap-test",
-            "[capabilities]\nchat_read = true",
-        );
+        let pfad = erstelle_test_plugin(&dir, "cap-test", "[capabilities]\nchat_read = true");
 
         let manager = PluginManager::neu(ManagerKonfiguration::default());
         let id = manager.plugin_laden(&pfad).unwrap();

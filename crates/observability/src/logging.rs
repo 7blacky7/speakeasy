@@ -6,7 +6,7 @@
 //!
 //! Request-IDs werden als Tracing-Span-Felder propagiert.
 
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 
 /// Initialisiert das Logging-System.
 ///
@@ -17,8 +17,7 @@ pub fn logging_initialisieren(level: &str, format: &str) {
         .or_else(|_| EnvFilter::try_new(level))
         .unwrap_or_else(|_| EnvFilter::new("info"));
 
-    let format_env = std::env::var("SE_LOG_FORMAT")
-        .unwrap_or_else(|_| format.to_string());
+    let format_env = std::env::var("SE_LOG_FORMAT").unwrap_or_else(|_| format.to_string());
 
     match format_env.as_str() {
         "json" => {
@@ -31,10 +30,7 @@ pub fn logging_initialisieren(level: &str, format: &str) {
                 .init();
         }
         _ => {
-            fmt()
-                .with_env_filter(filter)
-                .with_target(true)
-                .init();
+            fmt().with_env_filter(filter).with_target(true).init();
         }
     }
 }
