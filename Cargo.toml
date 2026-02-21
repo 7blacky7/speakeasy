@@ -13,6 +13,7 @@ members = [
     "crates/chat",
     "crates/plugin",
     "crates/crypto",
+    "crates/observability",
 ]
 
 [workspace.package]

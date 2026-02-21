@@ -1,0 +1,40 @@
+[package]
+name = "speakeasy-observability"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Observability-Crate fuer Speakeasy: Prometheus-Metriken, Health-Check, Structured Logging"
+
+[dependencies]
+# Prometheus Metriken
+prometheus = { version = "0.13", features = ["process"] }
+
+# System-Informationen (CPU, RAM)
+sysinfo = "0.32"
+
+# Async Runtime
+tokio = { workspace = true }
+
+# HTTP (Axum fuer /metrics und /health Endpunkte)
+axum = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialisierung
+serde.workspace = true
+serde_json.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Fehlerbehandlung
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Zeit
+chrono.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
