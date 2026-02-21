@@ -1,0 +1,119 @@
+.card {
+  background: var(--color-surface, #1e1e2e);
+  border: 1px solid var(--color-border, #313244);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardError {
+  border-color: var(--color-error, #f38ba8);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--color-text, #cdd6f4);
+  font-size: 0.95rem;
+}
+
+.version {
+  font-size: 0.75rem;
+  color: var(--color-subtext, #6c7086);
+}
+
+.trust {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.trustOk {
+  background: rgba(166, 227, 161, 0.15);
+  color: #a6e3a1;
+}
+
+.trustWarn {
+  background: rgba(249, 226, 175, 0.15);
+  color: #f9e2af;
+}
+
+.state {
+  font-size: 0.75rem;
+  color: var(--color-subtext, #6c7086);
+  white-space: nowrap;
+}
+
+.description {
+  font-size: 0.85rem;
+  color: var(--color-subtext, #a6adc8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.author {
+  font-size: 0.75rem;
+  color: var(--color-subtext, #6c7086);
+}
+
+.warning {
+  font-size: 0.78rem;
+  color: #f9e2af;
+  background: rgba(249, 226, 175, 0.1);
+  border: 1px solid rgba(249, 226, 175, 0.3);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.actions button {
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btnEnable {
+  background: var(--color-accent, #89b4fa);
+  color: #1e1e2e;
+}
+
+.btnDisable {
+  background: var(--color-surface2, #313244);
+  color: var(--color-text, #cdd6f4);
+}
+
+.btnUnload {
+  background: rgba(243, 139, 168, 0.15);
+  color: #f38ba8;
+  border: 1px solid rgba(243, 139, 168, 0.3) !important;
+}

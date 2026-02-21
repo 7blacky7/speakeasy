@@ -6,6 +6,7 @@ const ServerBrowser = lazy(() => import("./pages/ServerBrowser"));
 const ServerView = lazy(() => import("./pages/ServerView"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AudioSettings = lazy(() => import("./pages/AudioSettings"));
+const PluginSettings = lazy(() => import("./pages/PluginSettings"));
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
       <Route path="/server/:id" component={ServerView} />
       <Route path="/settings" component={Settings} />
       <Route path="/settings/audio" component={AudioSettings} />
+      <Route path="/settings/plugins" component={PluginSettings} />
     </Router>
   );
 }

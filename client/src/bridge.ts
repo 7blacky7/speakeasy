@@ -290,3 +290,58 @@ export async function downloadFile(fileId: string): Promise<Uint8Array> {
 export async function listFiles(channelId: string): Promise<FileInfo[]> {
   return invoke("list_files", { channelId });
 }
+
+// --- Plugin-Typen (Phase 5) ---
+
+export type PluginState = "Geladen" | "Aktiv" | "Deaktiviert" | { Fehler: string };
+export type TrustLevel = "NichtSigniert" | "Signiert" | "Vertrauenswuerdig";
+
+export interface PluginCapabilities {
+  filesystem: boolean;
+  network: boolean;
+  audio_read: boolean;
+  audio_write: boolean;
+  chat_read: boolean;
+  chat_write: boolean;
+  user_management: boolean;
+  server_config: boolean;
+}
+
+export interface PluginInfo {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  state: PluginState;
+  trust_level: TrustLevel;
+  geladen_am: string;
+}
+
+export interface PluginInstallResult {
+  id: string;
+  name: string;
+  trust_level: TrustLevel;
+}
+
+// --- Plugin IPC Commands (Phase 5) ---
+
+export async function listPlugins(): Promise<PluginInfo[]> {
+  return invoke("list_plugins");
+}
+
+export async function enablePlugin(id: string): Promise<void> {
+  return invoke("enable_plugin", { id });
+}
+
+export async function disablePlugin(id: string): Promise<void> {
+  return invoke("disable_plugin", { id });
+}
+
+export async function unloadPlugin(id: string): Promise<void> {
+  return invoke("unload_plugin", { id });
+}
+
+export async function installPlugin(path: string): Promise<PluginInstallResult> {
+  return invoke("install_plugin", { path });
+}
