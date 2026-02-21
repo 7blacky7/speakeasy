@@ -9,7 +9,7 @@ description = "WASM Plugin System fuer Speakeasy – Laden, Sandboxing und Lifec
 
 [dependencies]
 wasmtime = "29"
-wasmtime-wasi = "29"
+wasmtime-wasi = "41"
 speakeasy-core = { path = "../core" }
 tokio = { workspace = true }
 tracing = { workspace = true }
