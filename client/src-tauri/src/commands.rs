@@ -58,18 +58,7 @@ pub struct ServerInfo {
     pub version: String,
     pub max_clients: u32,
     pub online_clients: u32,
-    pub uptime_secs: u64,
     pub channels: Vec<ChannelInfo>,
-}
-
-// --- Ergebnis-Typen ---
-
-/// Ergebnis eines Server-Verbindungsversuchs
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ConnectResult {
-    pub success: bool,
-    /// Ob der Benutzer sein Passwort zwingend aendern muss
-    pub must_change_password: bool,
 }
 
 // --- Commands ---
@@ -82,7 +71,7 @@ pub async fn connect_to_server(
     port: u16,
     username: String,
     password: Option<String>,
-) -> Result<ConnectResult, String> {
+) -> Result<(), String> {
     info!(
         "Verbinde mit {}:{} als '{}' (Passwort: {})",
         address,
@@ -98,12 +87,10 @@ pub async fn connect_to_server(
 
     // Login durchfuehren
     let pwd = password.as_deref().unwrap_or("");
-    let login_resp = server_conn
+    server_conn
         .login(&username, pwd)
         .await
         .map_err(|e| format!("Login fehlgeschlagen: {}", e))?;
-
-    let must_change_password = login_resp.must_change_password;
 
     // Metadaten im sync ConnectionState speichern
     {
@@ -112,7 +99,6 @@ pub async fn connect_to_server(
         conn.server_address = Some(address);
         conn.server_port = Some(port);
         conn.username = Some(username);
-        conn.force_password_change = must_change_password;
     }
 
     // Echte TCP-Verbindung im async Mutex speichern
@@ -121,32 +107,7 @@ pub async fn connect_to_server(
         *tcp = Some(server_conn);
     }
 
-    Ok(ConnectResult {
-        success: true,
-        must_change_password,
-    })
-}
-
-/// Gibt zurueck ob der aktuelle Benutzer sein Passwort aendern muss
-#[tauri::command]
-pub async fn get_must_change_password(state: State<'_, AppState>) -> Result<bool, String> {
-    let conn = state.connection.lock().map_err(|e| e.to_string())?;
-    Ok(conn.force_password_change)
-}
-
-/// Setzt das force_password_change Flag zurueck (nach erfolgreicher Passwort-Aenderung)
-#[tauri::command]
-pub async fn clear_force_password_change(state: State<'_, AppState>) -> Result<(), String> {
-    let mut conn = state.connection.lock().map_err(|e| e.to_string())?;
-    conn.force_password_change = false;
     Ok(())
-}
-
-/// Gibt den Benutzernamen des aktuell angemeldeten Benutzers zurueck
-#[tauri::command]
-pub async fn get_current_username(state: State<'_, AppState>) -> Result<Option<String>, String> {
-    let conn = state.connection.lock().map_err(|e| e.to_string())?;
-    Ok(conn.username.clone())
 }
 
 /// Trennt die Verbindung zum Server und stoppt die Voice-Pipeline
@@ -1663,33 +1624,15 @@ pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, S
         .map_err(|e| format!("Channel-Liste Abfrage fehlgeschlagen: {}", e))?;
 
     // Protokoll-Typen in Client-DTOs konvertieren
-    let clients = conn.get_client_list().await.unwrap_or_default();
-    let my_user_id = conn.user_id().unwrap_or_default().to_string();
-
     let channel_dtos: Vec<ChannelInfo> = channels
         .into_iter()
-        .map(|ch| {
-            let ch_id_ref = &ch.channel_id;
-            let channel_clients = clients
-                .iter()
-                .filter(|c| c.channel_id.as_ref() == Some(ch_id_ref))
-                .map(|c| ClientInfo {
-                    id: c.user_id.inner().to_string(),
-                    username: if c.display_name.is_empty() { c.username.clone() } else { c.display_name.clone() },
-                    is_muted: c.is_input_muted || c.is_muted,
-                    is_deafened: c.is_deafened,
-                    is_self: c.user_id.inner().to_string() == my_user_id,
-                })
-                .collect();
-
-            ChannelInfo {
-                id: ch.channel_id.inner().to_string(),
-                name: ch.name,
-                description: ch.description.unwrap_or_default(),
-                parent_id: ch.parent_id.map(|p| p.inner().to_string()),
-                clients: channel_clients,
-                max_clients: ch.max_clients.unwrap_or(0),
-            }
+        .map(|ch| ChannelInfo {
+            id: ch.channel_id.inner().to_string(),
+            name: ch.name,
+            description: ch.description.unwrap_or_default(),
+            parent_id: ch.parent_id.map(|p| p.inner().to_string()),
+            clients: vec![],
+            max_clients: ch.max_clients.unwrap_or(0),
         })
         .collect();
 
@@ -1699,7 +1642,6 @@ pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, S
         version: info.version,
         max_clients: info.max_clients,
         online_clients: info.current_clients,
-        uptime_secs: info.uptime_secs,
         channels: channel_dtos,
     })
 }
