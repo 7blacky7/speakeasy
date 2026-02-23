@@ -35,7 +35,7 @@ speakeasy-audio = { path = "../../crates/audio" }
 speakeasy-plugin = { path = "../../crates/plugin" }
 tokio-util = { version = "0.7", features = ["codec"] }
 futures-util = "0.3"
-cpal = "0.15"
+cpal = "0.17"
 ringbuf = "0.4"
 uuid = { version = "1", features = ["v4"] }
 
