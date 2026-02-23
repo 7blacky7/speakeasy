@@ -8,7 +8,7 @@ repository.workspace = true
 description = "WASM Plugin System fuer Speakeasy – Laden, Sandboxing und Lifecycle"
 
 [dependencies]
-wasmtime = "29"
+wasmtime = "41"
 wasmtime-wasi = "29"
 speakeasy-core = { path = "../core" }
 tokio = { workspace = true }
