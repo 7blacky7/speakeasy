@@ -61,7 +61,7 @@ toml = "0.8"
 
 # Fehlerbehandlung
 anyhow = "1"
-thiserror = "1"
+thiserror = "2"
 
 # Utilities
 uuid = { version = "1", features = ["v4", "serde"] }
